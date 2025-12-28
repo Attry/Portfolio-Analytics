@@ -1,0 +1,5 @@
+{
+  "name": "Dhan Portfolio Analytics",
+  "description": "A professional trading dashboard to visualize trade history, calculate P&L, and analyze portfolio performance using the exported CSV data structure.",
+  "requestFramePermissions": []
+}
