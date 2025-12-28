@@ -47,6 +47,14 @@ export interface StockPriceRecord {
   date?: string;
 }
 
+export interface WatchlistItem {
+  id: string;
+  ticker: string;
+  desiredEntryPrice: number;
+  intrinsicValue: number;
+  researchLink: string;
+}
+
 export interface PortfolioSummary {
   totalInvested: number;
   currentValue: number;
@@ -62,6 +70,7 @@ export interface PortfolioSummary {
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   PORTFOLIO = 'PORTFOLIO',
+  WATCHLIST = 'WATCHLIST',
   TRANSACTIONS = 'TRANSACTIONS',
   UPLOAD = 'UPLOAD',
   AI_INSIGHTS = 'AI_INSIGHTS'

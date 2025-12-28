@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { StatsCard } from './components/StatsCard';
-import { ViewState, Trade, TradeType, PnLRecord, LedgerRecord, DividendRecord, StockPriceRecord } from './types';
+import { ViewState, Trade, TradeType, PnLRecord, LedgerRecord, DividendRecord, StockPriceRecord, WatchlistItem } from './types';
 import { analyzePortfolio } from './services/geminiService';
 import { 
   Briefcase, 
@@ -33,7 +33,10 @@ import {
   Link,
   Globe,
   Trash2,
-  History
+  History,
+  ListChecks,
+  Plus,
+  X
 } from 'lucide-react';
 import {
   BarChart,
@@ -60,7 +63,9 @@ const STORAGE_KEYS = {
     LEDGER: 'dhan_ledger',
     DIVIDENDS: 'dhan_dividends',
     PRICES: 'dhan_prices',
-    META: 'dhan_meta' // Stores timestamps of uploads
+    WATCHLIST: 'dhan_watchlist',
+    META: 'dhan_meta', // Stores timestamps of uploads
+    SUMMARY: 'dhan_summary' // Stores extracted footer values (Cash, Charges, etc.)
 };
 
 interface UploadMeta {
@@ -274,6 +279,15 @@ function App() {
       const saved = localStorage.getItem(STORAGE_KEYS.PRICES);
       return saved ? JSON.parse(saved) : {};
   });
+  
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.WATCHLIST);
+      return saved ? JSON.parse(saved) : [];
+  });
+
+  // Watchlist Search State
+  const [watchlistSearch, setWatchlistSearch] = useState('');
+  const [isAddingWatchlist, setIsAddingWatchlist] = useState(false);
 
   // Metadata State (Upload timestamps)
   const [uploadMeta, setUploadMeta] = useState<UploadMeta>(() => {
@@ -287,11 +301,23 @@ function App() {
   const [sheetId, setSheetId] = useState<string>('1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI');
   const [isFetchingSheet, setIsFetchingSheet] = useState(false);
 
-  // Extracted Summary Data (calculated from loaded PnL/Ledger)
-  const [extractedCharges, setExtractedCharges] = useState<number>(0);
-  const [extractedNetPnL, setExtractedNetPnL] = useState<number | null>(null);
-  const [extractedDividends, setExtractedDividends] = useState<number>(0);
-  const [extractedCash, setExtractedCash] = useState<number>(0);
+  // Extracted Summary Data (Lazy Load from LocalStorage)
+  const [extractedCharges, setExtractedCharges] = useState<number>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.SUMMARY);
+      return saved ? JSON.parse(saved).charges || 0 : 0;
+  });
+  const [extractedNetPnL, setExtractedNetPnL] = useState<number | null>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.SUMMARY);
+      return saved ? JSON.parse(saved).netPnL : null;
+  });
+  const [extractedDividends, setExtractedDividends] = useState<number>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.SUMMARY);
+      return saved ? JSON.parse(saved).dividends || 0 : 0;
+  });
+  const [extractedCash, setExtractedCash] = useState<number>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.SUMMARY);
+      return saved ? JSON.parse(saved).cash || 0 : 0;
+  });
 
   // Debug State
   const [lastUploadPreview, setLastUploadPreview] = useState<any[]>([]);
@@ -319,6 +345,12 @@ function App() {
       });
   };
 
+  const saveSummary = (updates: any) => {
+      const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.SUMMARY) || '{}');
+      const updated = { ...current, ...updates };
+      persistData(STORAGE_KEYS.SUMMARY, updated);
+  };
+
   const clearAllData = () => {
       if(confirm("Are you sure you want to clear all imported data? This cannot be undone.")) {
           localStorage.clear();
@@ -327,7 +359,12 @@ function App() {
           setLedgerData([]);
           setDividendData([]);
           setPriceData({});
+          setWatchlist([]);
           setUploadMeta({});
+          setExtractedCharges(0);
+          setExtractedNetPnL(null);
+          setExtractedDividends(0);
+          setExtractedCash(0);
           setMarketDate('');
           alert("All data cleared.");
       }
@@ -339,6 +376,43 @@ function App() {
       return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  // --- Watchlist Logic ---
+  const addToWatchlist = (ticker: string) => {
+      if (watchlist.some(w => w.ticker === ticker)) {
+          alert(`${ticker} is already in your watchlist.`);
+          return;
+      }
+      const newItem: WatchlistItem = {
+          id: Math.random().toString(36).substr(2, 9),
+          ticker,
+          desiredEntryPrice: 0,
+          intrinsicValue: 0,
+          researchLink: ''
+      };
+      const updated = [...watchlist, newItem];
+      setWatchlist(updated);
+      persistData(STORAGE_KEYS.WATCHLIST, updated);
+      setIsAddingWatchlist(false);
+      setWatchlistSearch('');
+  };
+
+  const removeFromWatchlist = (id: string) => {
+      const updated = watchlist.filter(w => w.id !== id);
+      setWatchlist(updated);
+      persistData(STORAGE_KEYS.WATCHLIST, updated);
+  };
+
+  const updateWatchlistItem = (id: string, field: keyof WatchlistItem, value: any) => {
+      const updated = watchlist.map(w => {
+          if (w.id === id) {
+              return { ...w, [field]: value };
+          }
+          return w;
+      });
+      setWatchlist(updated);
+      persistData(STORAGE_KEYS.WATCHLIST, updated);
+  };
+
   // --- Metrics Calculation ---
   const metrics = useMemo(() => {
     // 1. Calculate Gross P&L and Invested Value from Trade History (FIFO)
@@ -349,6 +423,8 @@ function App() {
 
     // 3. Dividends
     let totalDividends = dividendData.reduce((acc, curr) => acc + curr.amount, 0);
+    // If we have an extracted total from footer that is greater than sum of rows (or rows empty), use that
+    if (extractedDividends > totalDividends) totalDividends = extractedDividends;
 
     // 4. Cash
     let cashBalance = extractedCash;
@@ -696,10 +772,16 @@ function App() {
           }
           else if (type === 'PNL') {
              const totalCharges = findValueInFooter(rawRows, ['Total Charges', 'Charges']);
-             if (totalCharges !== null) setExtractedCharges(totalCharges);
+             if (totalCharges !== null) {
+                 setExtractedCharges(totalCharges);
+                 saveSummary({ charges: totalCharges });
+             }
 
              const reportedNet = findValueInFooter(rawRows, ['Net P&L', 'Net Realised P&L']);
-             if (reportedNet !== null) setExtractedNetPnL(reportedNet);
+             if (reportedNet !== null) {
+                 setExtractedNetPnL(reportedNet);
+                 saveSummary({ netPnL: reportedNet });
+             }
 
              const headerIdx = findHeaderRowIndex(rawRows, ['Scrip', 'Qty']);
              if (headerIdx !== -1) {
@@ -735,7 +817,10 @@ function App() {
           } 
           else if (type === 'LEDGER') {
              const closingBal = findValueInFooter(rawRows, ['Closing Balance', 'Balance']);
-             if (closingBal !== null) setExtractedCash(closingBal);
+             if (closingBal !== null) {
+                 setExtractedCash(closingBal);
+                 saveSummary({ cash: closingBal });
+             }
 
              const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Debit']);
              if (headerIdx !== -1) {
@@ -766,7 +851,10 @@ function App() {
           else if (type === 'DIVIDEND') {
              // Search for Total Value first (User specified this location)
              const totalDiv = findValueInFooter(rawRows, ['Total Dividend Earned', 'Total Dividend', 'Total']);
-             if (totalDiv !== null) setExtractedDividends(totalDiv);
+             if (totalDiv !== null) {
+                 setExtractedDividends(totalDiv);
+                 saveSummary({ dividends: totalDiv });
+             }
 
              // Relaxed Header Search Strategy
              const possibleHeaderKeywords = [
@@ -872,6 +960,201 @@ function App() {
     } finally {
         setIsAnalyzing(false);
     }
+  };
+
+  // --- Render Functions ---
+
+  const renderWatchlist = () => {
+      // Get all available tickers from priceData for search
+      const availableTickers = Object.keys(priceData).sort();
+      const filteredSearch = availableTickers.filter(t => t.toLowerCase().includes(watchlistSearch.toLowerCase()));
+
+      return (
+        <div className="glass-card rounded-2xl overflow-hidden animate-fade-in relative min-h-[500px]">
+            <div className="p-6 border-b border-white/5 flex gap-4 items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <ListChecks className="w-5 h-5 text-accent-pink" />
+                    <h2 className="text-lg font-bold text-white">Watchlist</h2>
+                </div>
+                
+                <div className="relative">
+                    {!isAddingWatchlist ? (
+                        <button 
+                            onClick={() => setIsAddingWatchlist(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary-glow border border-primary/30 rounded-lg text-sm font-bold transition-all"
+                        >
+                            <Plus size={16} /> Add Stock
+                        </button>
+                    ) : (
+                        <div className="flex items-center gap-2 animate-fade-in">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+                                <input 
+                                    type="text" 
+                                    autoFocus
+                                    placeholder="Search Market Data..."
+                                    value={watchlistSearch}
+                                    onChange={(e) => setWatchlistSearch(e.target.value)}
+                                    className="bg-black/50 border border-white/10 text-white text-sm rounded-lg py-2 pl-9 pr-4 focus:ring-1 focus:ring-accent-pink outline-none w-64"
+                                />
+                                {watchlistSearch && (
+                                    <div className="absolute top-full mt-2 left-0 w-full bg-[#151925] border border-white/10 rounded-lg shadow-xl max-h-60 overflow-y-auto z-50">
+                                        {filteredSearch.length > 0 ? (
+                                            filteredSearch.map(ticker => (
+                                                <button
+                                                    key={ticker}
+                                                    onClick={() => addToWatchlist(ticker)}
+                                                    className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-gray-300 hover:text-white border-b border-white/5 last:border-0"
+                                                >
+                                                    {ticker}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-4 py-3 text-sm text-gray-500">No stocks found in Market Data</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <button 
+                                onClick={() => { setIsAddingWatchlist(false); setWatchlistSearch(''); }}
+                                className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="overflow-x-auto">
+                {watchlist.length === 0 ? (
+                    <div className="text-center py-20">
+                        <ListChecks className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                        <p className="text-gray-500 text-sm">Your watchlist is empty.</p>
+                        {Object.keys(priceData).length === 0 && (
+                            <p className="text-xs text-orange-400 mt-2">Note: You need to sync Market Data first to add stocks.</p>
+                        )}
+                    </div>
+                ) : (
+                    <table className="w-full text-left">
+                        <thead className="bg-white/5 text-gray-400 text-xs uppercase font-bold tracking-wider">
+                            <tr>
+                                <th className="px-6 py-4">Name</th>
+                                <th className="px-6 py-4 text-right">Current Price</th>
+                                <th className="px-6 py-4 text-right">Desired Entry</th>
+                                <th className="px-6 py-4 text-right">Intrinsic Value</th>
+                                <th className="px-6 py-4 text-right">Margin of Safety</th>
+                                <th className="px-6 py-4 text-right">Call Ratio</th>
+                                <th className="px-6 py-4 text-center">Call</th>
+                                <th className="px-6 py-4 text-center">Report</th>
+                                <th className="px-6 py-4 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {watchlist.map(item => {
+                                const currentPrice = priceData[item.ticker] || 0;
+                                
+                                // Margin of Safety: How much current price is down from Intrinsic
+                                // If Price < Intrinsic, positive MoS. If Price > Intrinsic, negative MoS.
+                                // Formula: (1 - (Price / Intrinsic)) * 100
+                                const mos = item.intrinsicValue > 0 
+                                    ? (1 - (currentPrice / item.intrinsicValue)) * 100 
+                                    : 0;
+
+                                // Call Ratio: Desired / Current
+                                const callRatio = currentPrice > 0 
+                                    ? item.desiredEntryPrice / currentPrice 
+                                    : 0;
+
+                                let callStatus = 'Expensive';
+                                let callColor = 'text-danger bg-danger/10 border-danger/20';
+                                
+                                if (callRatio > 0.9) {
+                                    callStatus = 'Accumulate';
+                                    callColor = 'text-success bg-success/10 border-success/20';
+                                } else if (callRatio >= 0.85) {
+                                    callStatus = 'Monitor';
+                                    callColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+                                }
+
+                                return (
+                                    <tr key={item.id} className="hover:bg-white/5 transition-colors text-sm group">
+                                        <td className="px-6 py-4 font-bold text-white">{item.ticker}</td>
+                                        <td className="px-6 py-4 text-right font-mono text-gray-300">
+                                            {currentPrice > 0 ? `₹${currentPrice.toLocaleString()}` : <span className="text-gray-600">N/A</span>}
+                                        </td>
+                                        
+                                        {/* Editable Desired Entry */}
+                                        <td className="px-6 py-4 text-right">
+                                            <input 
+                                                type="number" 
+                                                value={item.desiredEntryPrice || ''}
+                                                onChange={(e) => updateWatchlistItem(item.id, 'desiredEntryPrice', parseFloat(e.target.value))}
+                                                placeholder="0"
+                                                className="w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-right outline-none text-white font-mono"
+                                            />
+                                        </td>
+
+                                        {/* Editable Intrinsic Value */}
+                                        <td className="px-6 py-4 text-right">
+                                            <input 
+                                                type="number" 
+                                                value={item.intrinsicValue || ''}
+                                                onChange={(e) => updateWatchlistItem(item.id, 'intrinsicValue', parseFloat(e.target.value))}
+                                                placeholder="0"
+                                                className="w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-right outline-none text-white font-mono"
+                                            />
+                                        </td>
+
+                                        <td className={`px-6 py-4 text-right font-mono font-bold ${mos > 0 ? 'text-success' : 'text-danger'}`}>
+                                            {item.intrinsicValue > 0 ? `${mos.toFixed(2)}%` : '-'}
+                                        </td>
+
+                                        <td className="px-6 py-4 text-right font-mono text-gray-300">
+                                            {callRatio.toFixed(2)}
+                                        </td>
+
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-bold border ${callColor}`}>
+                                                {callStatus}
+                                            </span>
+                                        </td>
+
+                                        {/* Editable Link */}
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <input 
+                                                    type="text"
+                                                    value={item.researchLink || ''}
+                                                    onChange={(e) => updateWatchlistItem(item.id, 'researchLink', e.target.value)}
+                                                    placeholder="Paste Docs Link"
+                                                    className="w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-xs outline-none text-gray-400"
+                                                />
+                                                {item.researchLink && (
+                                                    <a href={item.researchLink} target="_blank" rel="noopener noreferrer" className="text-accent-cyan hover:text-white">
+                                                        <ExternalLink size={14} />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </td>
+
+                                        <td className="px-6 py-4 text-center">
+                                            <button 
+                                                onClick={() => removeFromWatchlist(item.id)}
+                                                className="p-1.5 text-gray-500 hover:text-danger hover:bg-danger/10 rounded transition-colors"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+        </div>
+      );
   };
 
   const renderDashboard = () => (
@@ -1429,6 +1712,7 @@ function App() {
                 <h1 className="text-3xl font-bold text-white tracking-tight">
                     {currentView === ViewState.DASHBOARD && 'Dashboard'}
                     {currentView === ViewState.PORTFOLIO && 'Portfolio Holdings'}
+                    {currentView === ViewState.WATCHLIST && 'Watchlist'}
                     {currentView === ViewState.TRANSACTIONS && 'Transactions'}
                     {currentView === ViewState.UPLOAD && 'Data Import'}
                     {currentView === ViewState.AI_INSIGHTS && 'AI Analyst'}
@@ -1455,6 +1739,7 @@ function App() {
 
         {currentView === ViewState.DASHBOARD && renderDashboard()}
         {currentView === ViewState.PORTFOLIO && renderPortfolio()}
+        {currentView === ViewState.WATCHLIST && renderWatchlist()}
         {currentView === ViewState.TRANSACTIONS && renderTransactions()}
         {currentView === ViewState.UPLOAD && renderUpload()}
         {currentView === ViewState.AI_INSIGHTS && renderAI()}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart } from 'lucide-react';
+import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart, ListChecks } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface SidebarProps {
@@ -11,6 +11,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
   const menuItems = [
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { id: ViewState.PORTFOLIO, label: 'Portfolio', icon: <PieChart size={20} /> },
+    { id: ViewState.WATCHLIST, label: 'Watchlist', icon: <ListChecks size={20} /> },
     { id: ViewState.TRANSACTIONS, label: 'Transactions', icon: <Table2 size={20} /> },
     { id: ViewState.AI_INSIGHTS, label: 'AI Analyst', icon: <BrainCircuit size={20} /> },
     { id: ViewState.UPLOAD, label: 'Import CSV', icon: <UploadCloud size={20} /> },
