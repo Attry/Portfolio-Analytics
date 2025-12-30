@@ -69,9 +69,11 @@ export interface PortfolioSummary {
 
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
-  PORTFOLIO = 'PORTFOLIO',
+  HOLDINGS = 'HOLDINGS',
   WATCHLIST = 'WATCHLIST',
   TRANSACTIONS = 'TRANSACTIONS',
   UPLOAD = 'UPLOAD',
   AI_INSIGHTS = 'AI_INSIGHTS'
 }
+
+export type AssetContext = 'INDIAN_EQUITY' | 'INTERNATIONAL_EQUITY' | 'GOLD_ETF' | 'CASH_EQUIVALENTS';

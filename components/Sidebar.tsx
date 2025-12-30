@@ -1,21 +1,45 @@
-import React from 'react';
-import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart, ListChecks } from 'lucide-react';
-import { ViewState } from '../types';
+import React, { useState } from 'react';
+import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart, ListChecks, ChevronDown, ChevronUp } from 'lucide-react';
+import { ViewState, AssetContext } from '../types';
 
 interface SidebarProps {
   currentView: ViewState;
   setView: (view: ViewState) => void;
+  currentContext: AssetContext;
+  setContext: (context: AssetContext) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentContext, setContext }) => {
+  const [showAccounts, setShowAccounts] = useState(true);
+
   const menuItems = [
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { id: ViewState.PORTFOLIO, label: 'Portfolio', icon: <PieChart size={20} /> },
+    { id: ViewState.HOLDINGS, label: 'Holdings', icon: <PieChart size={20} /> },
     { id: ViewState.WATCHLIST, label: 'Watchlist', icon: <ListChecks size={20} /> },
     { id: ViewState.TRANSACTIONS, label: 'Transactions', icon: <Table2 size={20} /> },
     { id: ViewState.AI_INSIGHTS, label: 'AI Analyst', icon: <BrainCircuit size={20} /> },
     { id: ViewState.UPLOAD, label: 'Import CSV', icon: <UploadCloud size={20} /> },
   ];
+
+  const renderAssetButton = (label: string, context: AssetContext) => {
+      const isActive = currentContext === context;
+      return (
+        <button 
+            onClick={() => setContext(context)}
+            className={`w-full flex items-center justify-between group cursor-pointer transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
+        >
+            <span className={`text-sm font-medium transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                {label}
+            </span>
+            <span className="flex h-2.5 w-2.5 relative">
+              {isActive && (
+                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+              )}
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isActive ? 'bg-success' : 'bg-gray-700'}`}></span>
+            </span>
+        </button>
+      );
+  };
 
   return (
     <aside className="w-64 glass-panel border-r border-border flex flex-col h-screen fixed left-0 top-0 z-50">
@@ -55,14 +79,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
 
       <div className="p-4 border-t border-white/5 relative z-10">
         <div className="bg-gradient-to-br from-white/5 to-transparent rounded-xl p-4 border border-white/5">
-            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Connection Status</p>
-            <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-200 font-medium">Dhan Account</span>
-                <span className="flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-success opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success"></span>
-                </span>
+            
+            <div className="space-y-4">
+                {renderAssetButton('Indian Equity', 'INDIAN_EQUITY')}
+
+                {showAccounts && (
+                    <div className="space-y-4 pt-2 animate-fade-in border-t border-white/5">
+                         {renderAssetButton('International Equity', 'INTERNATIONAL_EQUITY')}
+                         {renderAssetButton('Gold ETF', 'GOLD_ETF')}
+                         {renderAssetButton('Cash Equivalents', 'CASH_EQUIVALENTS')}
+                    </div>
+                )}
             </div>
+
+            <button 
+                onClick={() => setShowAccounts(!showAccounts)}
+                className="w-full mt-4 pt-2 border-t border-white/10 text-[11px] font-bold text-primary-glow hover:text-white transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
+            >
+                {showAccounts ? 'Show Less' : 'More Assets'}
+                {showAccounts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
         </div>
       </div>
     </aside>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { StatsCard } from './components/StatsCard';
-import { ViewState, Trade, TradeType, PnLRecord, LedgerRecord, DividendRecord, StockPriceRecord, WatchlistItem } from './types';
+import { ViewState, Trade, TradeType, PnLRecord, LedgerRecord, DividendRecord, StockPriceRecord, WatchlistItem, AssetContext } from './types';
 import { analyzePortfolio } from './services/geminiService';
 import { 
   Briefcase, 
@@ -36,7 +36,10 @@ import {
   History,
   ListChecks,
   Plus,
-  X
+  X,
+  LineChart as LineChartIcon,
+  BarChart3,
+  FileText
 } from 'lucide-react';
 import {
   BarChart,
@@ -48,25 +51,14 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  Legend
 } from 'recharts';
 
 // New Vibrant Palette
-const COLORS = ['#7042f8', '#00e5ff', '#ff2975', '#00ffa3', '#facc15'];
+const COLORS = ['#7042f8', '#00e5ff', '#ff2975', '#00ffa3', '#facc15', '#fb923c', '#a855f7'];
 
-type UploadType = 'PNL' | 'LEDGER' | 'DIVIDEND' | 'TRADE_HISTORY' | 'MARKET_DATA';
-
-// --- Local Storage Keys ---
-const STORAGE_KEYS = {
-    TRADES: 'dhan_trades',
-    PNL: 'dhan_pnl',
-    LEDGER: 'dhan_ledger',
-    DIVIDENDS: 'dhan_dividends',
-    PRICES: 'dhan_prices',
-    WATCHLIST: 'dhan_watchlist',
-    META: 'dhan_meta', // Stores timestamps of uploads
-    SUMMARY: 'dhan_summary' // Stores extracted footer values (Cash, Charges, etc.)
-};
+type UploadType = 'PNL' | 'LEDGER' | 'DIVIDEND' | 'TRADE_HISTORY' | 'MARKET_DATA' | 'PORTFOLIO_SNAPSHOT';
 
 interface UploadMeta {
     trades?: string;
@@ -74,22 +66,74 @@ interface UploadMeta {
     ledger?: string;
     dividend?: string;
     market?: string;
+    portfolio?: string;
     marketDate?: string;
 }
+
+// --- Dynamic Storage Keys ---
+const getStorageKeys = (context: AssetContext) => {
+    let prefix = 'dhan'; // Default for Indian Equity
+    
+    if (context === 'INTERNATIONAL_EQUITY') prefix = 'intl';
+    else if (context === 'GOLD_ETF') prefix = 'gold';
+    else if (context === 'CASH_EQUIVALENTS') prefix = 'cash';
+
+    return {
+        TRADES: `${prefix}_trades`,
+        PNL: `${prefix}_pnl`,
+        LEDGER: `${prefix}_ledger`,
+        DIVIDENDS: `${prefix}_dividends`,
+        PRICES: `${prefix}_prices`,
+        WATCHLIST: `${prefix}_watchlist`,
+        META: `${prefix}_meta`,
+        SUMMARY: `${prefix}_summary`,
+        SHEET_ID: `${prefix}_sheet_id`
+    };
+};
 
 // --- Helper Functions ---
 
 const clean = (val: string) => val ? val.replace(/"/g, '').trim() : '';
 
+// Helper to normalize headers (remove accents, lowercase) for robust matching
+// e.g., "Quantité" -> "quantite", "Montant négocié EUR" -> "montant negocie eur"
+const normalizeHeader = (header: string) => {
+    if (!header) return "";
+    return header
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+};
+
 const parseNum = (val: string) => {
     if (!val) return 0;
-    let cleaned = clean(val).replace(/,/g, ''); 
+    
+    // Clean string: remove spaces (thousands separators in French), quotes
+    let cleaned = val.replace(/[\s"]/g, '').trim();
+    
     if (cleaned.includes('(') && cleaned.includes(')')) {
         cleaned = '-' + cleaned.replace(/[()]/g, '');
     }
-    // Remove currency symbols (e.g. ₹, $) and other non-numeric chars except dot and minus
-    cleaned = cleaned.replace(/[^0-9.-]/g, '');
-    return parseFloat(cleaned) || 0;
+
+    // Remove currency symbols/text (keeping digits, minus sign, dots, commas)
+    cleaned = cleaned.replace(/[^0-9.,-]/g, '');
+
+    if (!cleaned) return 0;
+
+    // Robust European vs Standard detection
+    // Case 1: Euro format "1.234,56" or "1234,56" (Comma is decimal)
+    // Heuristic: If comma exists and is the last separator, or matches Euro pattern
+    if (cleaned.indexOf(',') > -1 && (cleaned.indexOf('.') === -1 || cleaned.indexOf(',') > cleaned.indexOf('.'))) {
+         cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    } 
+    // Case 2: Standard "1,234.56" (Comma is thousands)
+    else {
+        cleaned = cleaned.replace(/,/g, '');
+    }
+
+    const res = parseFloat(cleaned);
+    return isNaN(res) ? 0 : res;
 };
 
 interface PerStockData {
@@ -138,6 +182,7 @@ const calculateFIFO = (trades: Trade[]) => {
                 const qty = Math.min(qtyToSell, match.qty);
                 
                 // Realized PnL for this chunk
+                // Formula: (Sell Price - Buy Price) * Qty
                 const pnl = qty * (trade.price - match.price);
                 grossRealizedPnL += pnl;
                 position.realizedPnL += pnl;
@@ -237,8 +282,11 @@ const findValueInFooter = (rows: string[][], keywords: string[]): number | null 
 const findHeaderRowIndex = (rows: string[][], requiredKeywords: string[]): number => {
     // Increased scan range to 50 rows to handle large headers/disclaimers
     for (let i = 0; i < Math.min(rows.length, 50); i++) {
-        const rowString = rows[i].join(' ').toLowerCase();
-        const allFound = requiredKeywords.every(k => rowString.includes(k.toLowerCase()));
+        // Normalize the entire row string for matching
+        const rowString = rows[i].map(normalizeHeader).join(' ');
+        
+        // Check if all required keywords exist in the normalized row
+        const allFound = requiredKeywords.every(k => rowString.includes(normalizeHeader(k)));
         if (allFound) return i;
     }
     return -1;
@@ -246,18 +294,27 @@ const findHeaderRowIndex = (rows: string[][], requiredKeywords: string[]): numbe
 
 const getColIndex = (headers: string[], possibleNames: string[]): number => {
     if (!headers) return -1;
-    const lowerHeaders = headers.map(h => h.toLowerCase().trim().replace(/['"]/g, ''));
+    // Normalize headers for comparison
+    const normalizedHeaders = headers.map(normalizeHeader);
+    
     for (const name of possibleNames) {
-        const index = lowerHeaders.findIndex(h => h.includes(name.toLowerCase()));
+        const normName = normalizeHeader(name);
+        // Strict match first, then partial
+        let index = normalizedHeaders.indexOf(normName);
+        if (index !== -1) return index;
+        
+        index = normalizedHeaders.findIndex(h => h.includes(normName));
         if (index !== -1) return index;
     }
     return -1;
 };
 
-function App() {
-  const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
+// --- Inner Component: Handles the Logic for a Specific Portfolio Context ---
+function PortfolioDashboard({ context, currentView }: { context: AssetContext, currentView: ViewState }) {
   const [uploadType, setUploadType] = useState<UploadType>('TRADE_HISTORY');
   
+  const STORAGE_KEYS = useMemo(() => getStorageKeys(context), [context]);
+
   // Data States (Lazy Load from LocalStorage)
   const [trades, setTrades] = useState<Trade[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.TRADES);
@@ -296,9 +353,23 @@ function App() {
   });
 
   // Derived State helpers
+  // Initialize Sheet ID from LocalStorage with fallback to the specific ID based on context
+  const [sheetId, setSheetId] = useState<string>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.SHEET_ID);
+      if (saved) {
+          try {
+            return JSON.parse(saved);
+          } catch (e) {
+            return saved;
+          }
+      }
+      // Context specific defaults
+      if (context === 'INTERNATIONAL_EQUITY') return "1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY";
+      return "1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI";
+  });
+
   const [marketDate, setMarketDate] = useState<string>(uploadMeta.marketDate || '');
   const [lastPriceUpdate, setLastPriceUpdate] = useState<string | null>(uploadMeta.marketDate || null);
-  const [sheetId, setSheetId] = useState<string>('1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI');
   const [isFetchingSheet, setIsFetchingSheet] = useState(false);
 
   // Extracted Summary Data (Lazy Load from LocalStorage)
@@ -337,6 +408,11 @@ function App() {
       }
   };
 
+  // Persist Sheet ID whenever it changes
+  useEffect(() => {
+      persistData(STORAGE_KEYS.SHEET_ID, sheetId);
+  }, [sheetId, STORAGE_KEYS.SHEET_ID]);
+
   const updateMeta = (updates: Partial<UploadMeta>) => {
       setUploadMeta(prev => {
           const newMeta = { ...prev, ...updates };
@@ -352,8 +428,10 @@ function App() {
   };
 
   const clearAllData = () => {
-      if(confirm("Are you sure you want to clear all imported data? This cannot be undone.")) {
-          localStorage.clear();
+      if(confirm(`Are you sure you want to clear all imported data for ${context.replace(/_/g, ' ')}? This cannot be undone.`)) {
+          // Only clear keys relevant to this context
+          Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+          
           setTrades([]);
           setPnlData([]);
           setLedgerData([]);
@@ -366,7 +444,12 @@ function App() {
           setExtractedDividends(0);
           setExtractedCash(0);
           setMarketDate('');
-          alert("All data cleared.");
+          
+          // Reset Sheet ID to default based on context
+          if (context === 'INTERNATIONAL_EQUITY') setSheetId("1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY");
+          else setSheetId("1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI");
+          
+          alert(`All data cleared for ${context.replace(/_/g, ' ')}.`);
       }
   };
 
@@ -468,6 +551,7 @@ function App() {
 
           return {
               ticker,
+              qty: data.qty,
               invested: data.invested,
               unrealized,
               realized: data.realizedPnL,
@@ -522,20 +606,20 @@ function App() {
       currentValue,
       xirr,
       reportedNetPnL: extractedNetPnL,
-      portfolioHoldings: finalHoldings,
+      holdings: finalHoldings,
       hasLiveData: Object.keys(priceData).length > 0
     };
   }, [pnlData, ledgerData, dividendData, trades, extractedCharges, extractedNetPnL, extractedDividends, extractedCash, priceData]);
 
   // Asset Distribution
   const tickerDistribution = useMemo(() => {
-    if (metrics.portfolioHoldings.length > 0) {
-        return metrics.portfolioHoldings
+    if (metrics.holdings.length > 0) {
+        return metrics.holdings
             .map(h => ({ name: h.ticker, value: h.marketValue || 0 }))
             .sort((a, b) => b.value - a.value);
     }
     return [];
-  }, [metrics.portfolioHoldings]);
+  }, [metrics.holdings]);
 
   // --- Robust Date Parser ---
   const parseIndianDate = (dateStr: string): string => {
@@ -544,6 +628,12 @@ function App() {
       
       // Try ISO YYYY-MM-DD
       if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr;
+      
+      // Handle DD-MM-YYYY
+      if (dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
+          const [d, m, y] = dateStr.split('-');
+          return `${y}-${m}-${d}`;
+      }
 
       // Handle Month Names (Jan, Feb, etc.)
       const months: {[key: string]: string} = {
@@ -597,7 +687,7 @@ function App() {
         const rawRows = lines.map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
         setLastUploadPreview(rawRows.slice(0, 5));
 
-        const tickerKeywords = ['Ticker', 'Symbol', 'Stock', 'Name', 'Scrip'];
+        const tickerKeywords = ['Ticker', 'Symbol', 'Stock', 'Name', 'Scrip', 'Product'];
         const priceKeywords = ['Price', 'Close', 'LTP', 'Rate', 'Value'];
         
         let hIdx = -1;
@@ -652,10 +742,10 @@ function App() {
             persistData(STORAGE_KEYS.PRICES, updated);
             return updated;
         });
-        setLastPriceUpdate(marketDate);
+        setLastPriceUpdate(marketDate || new Date().toISOString().split('T')[0]);
         updateMeta({ market: new Date().toISOString(), marketDate: marketDate });
         
-        alert(`Success: Updated prices for ${count} stocks with date ${marketDate}.`);
+        alert(`Success: Updated prices for ${count} stocks.`);
     } catch (error) {
         console.error("Error processing market CSV:", error);
         alert("Error parsing market data. check console.");
@@ -692,6 +782,7 @@ function App() {
   };
 
   // --- Auto-Sync on Mount ---
+  // Only auto-sync if we have a Sheet ID explicitly set.
   useEffect(() => {
     const timer = setTimeout(() => {
         if (sheetId && marketDate) {
@@ -699,7 +790,7 @@ function App() {
         }
     }, 5000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [sheetId]); 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: UploadType) => {
     const file = event.target.files?.[0];
@@ -716,11 +807,194 @@ function App() {
       const content = e.target?.result as string;
       if (content) {
         try {
+          // --- AUTO DETECT DELIMITER (Comma vs Semicolon) ---
+          const firstLine = content.substring(0, 1000).split('\n')[0];
+          // Simple heuristic: count commas vs semicolons in the first line
+          const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
+            
           const lines = content.split('\n').filter(line => line.trim() !== '');
-          const rawRows = lines.map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-          setLastUploadPreview(rawRows.slice(0, 5));
+          
+          // Regex to split by delimiter but ignore delimiter inside quotes
+          const splitRegex = delimiter === ';' 
+            ? /;(?=(?:(?:[^"]*"){2})*[^"]*$)/ 
+            : /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
 
+          const rawRows = lines.map(line => line.split(splitRegex));
+          setLastUploadPreview(rawRows.slice(0, 5));
+          
+          // --- INTERNATIONAL EQUITY (DEGIRO) LOGIC ---
+          if (context === 'INTERNATIONAL_EQUITY') {
+              if (type === 'TRADE_HISTORY') {
+                  // Degiro: Date, Produit, Quantité, Montant négocié EUR
+                  // Matching just "Date" and "Produit" to be safe against slight variations
+                  const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Produit']);
+                  if (headerIdx === -1) {
+                      // Fallback for English: Date, Product
+                       const headerIdxEn = findHeaderRowIndex(rawRows, ['Date', 'Product']);
+                       if (headerIdxEn === -1) {
+                           alert("Could not find Degiro transactions header. Expecting 'Date' and 'Produit' (or 'Product').");
+                           return;
+                       }
+                  }
+                  
+                  const finalIdx = headerIdx !== -1 ? headerIdx : findHeaderRowIndex(rawRows, ['Date', 'Product']);
+                  const headers = rawRows[finalIdx];
+                  setLastUploadHeaders(headers);
+                  const rows = rawRows.slice(finalIdx + 1);
+
+                  const idxDate = getColIndex(headers, ['Date', 'Date']);
+                  const idxTicker = getColIndex(headers, ['Produit', 'Product']);
+                  const idxQty = getColIndex(headers, ['Quantité', 'Quantity', 'Quantite']); 
+                  // "Montant EUR" is the trade value in EUR (Qty * Price)
+                  const idxValEUR = getColIndex(headers, ['Montant EUR', 'Amount EUR']);
+                  // "Montant négocié EUR" is the CASH impact (Price * Qty + Fees)
+                  // Search for "Montant negocie" to be safe against accent issues
+                  const idxNetEUR = getColIndex(headers, ['Montant négocié', 'Montant negocie', 'Net Amount', 'Total']); 
+
+                  const newTrades: Trade[] = [];
+                  rows.forEach(row => {
+                      const dateStr = parseIndianDate(clean(row[idxDate]));
+                      if (!dateStr) return;
+
+                      const ticker = clean(row[idxTicker]);
+                      // Degiro uses signed Quantity for Buy/Sell
+                      const qtyRaw = parseNum(row[idxQty]);
+                      const qty = Math.abs(qtyRaw);
+                      
+                      const valEUR = parseNum(row[idxValEUR]);
+                      const netEUR = idxNetEUR !== -1 ? parseNum(row[idxNetEUR]) : valEUR;
+
+                      // Implied EUR Price Logic
+                      const effectiveValue = (valEUR !== 0) ? valEUR : netEUR;
+                      const price = qty > 0 ? Math.abs(effectiveValue / qty) : 0;
+                      
+                      const tradeType = qtyRaw > 0 ? TradeType.BUY : TradeType.SELL;
+                      // Ensure logic consistency: Buy should be negative netAmount
+                      const netAmount = tradeType === TradeType.BUY ? -Math.abs(netEUR) : Math.abs(netEUR);
+
+                      if (ticker && qty > 0) {
+                          newTrades.push({
+                              id: Math.random().toString(36).substr(2, 9),
+                              date: dateStr,
+                              ticker,
+                              type: tradeType,
+                              quantity: qty,
+                              price,
+                              netAmount,
+                              status: 'TRADED'
+                          });
+                      }
+                  });
+
+                  if (newTrades.length > 0) {
+                    setTrades(newTrades);
+                    persistData(STORAGE_KEYS.TRADES, newTrades);
+                    updateMeta({ trades: new Date().toISOString() });
+                    alert(`Success: Imported ${newTrades.length} Degiro transactions.`);
+                  } else {
+                    alert("No valid trades parsed. Check CSV format (Delimiter detected: " + delimiter + ").");
+                  }
+              }
+              else if (type === 'LEDGER') {
+                   // Degiro Account Statement
+                   const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Description']);
+                   if (headerIdx !== -1) {
+                       const headers = rawRows[headerIdx];
+                       setLastUploadHeaders(headers);
+                       const rows = rawRows.slice(headerIdx + 1);
+                       
+                       const idxDate = getColIndex(headers, ['Date', 'Value Date']);
+                       const idxDesc = getColIndex(headers, ['Description']);
+                       // Look for various names for the Amount column
+                       const idxChange = getColIndex(headers, ['Montant', 'Variation', 'Change', 'Amount', 'Mutation']);
+                       
+                       const newDividends: DividendRecord[] = [];
+                       
+                       rows.forEach(row => {
+                           const desc = clean(row[idxDesc]);
+                           if (desc.toLowerCase().includes('dividend') || desc.toLowerCase().includes('dividende')) {
+                               const dateStr = parseIndianDate(clean(row[idxDate]));
+                               if (!dateStr) return;
+                               
+                               const amount = parseNum(row[idxChange]);
+                               if (amount > 0) {
+                                   newDividends.push({
+                                       date: dateStr,
+                                       scripName: desc, 
+                                       amount: amount
+                                   });
+                               }
+                           }
+                       });
+
+                       if (newDividends.length > 0) {
+                           setDividendData(newDividends);
+                           persistData(STORAGE_KEYS.DIVIDENDS, newDividends);
+                           updateMeta({ dividend: new Date().toISOString() });
+                           alert(`Success: Imported ${newDividends.length} Dividend records.`);
+                       } else {
+                           alert("No dividend entries found in Account CSV (Delimiter detected: " + delimiter + ").");
+                       }
+                   } else {
+                       alert("Could not find Degiro Account headers (Date, Description).");
+                   }
+              }
+              else if (type === 'PORTFOLIO_SNAPSHOT') {
+                  // Degiro Portfolio: Produit, Clôture
+                  const headerIdx = findHeaderRowIndex(rawRows, ['Produit', 'Quantité']); 
+                  if (headerIdx === -1) {
+                       // Fallback
+                       const headerIdxEn = findHeaderRowIndex(rawRows, ['Product', 'Quantity']);
+                       if (headerIdxEn === -1) {
+                           alert("Could not find Degiro Portfolio headers (Produit, Quantité).");
+                           return;
+                       }
+                  }
+
+                  const finalIdx = headerIdx !== -1 ? headerIdx : findHeaderRowIndex(rawRows, ['Product', 'Quantity']);
+                  const headers = rawRows[finalIdx];
+                  setLastUploadHeaders(headers);
+                  const rows = rawRows.slice(finalIdx + 1);
+                  
+                  const idxProduct = getColIndex(headers, ['Produit', 'Product']);
+                  const idxPrice = getColIndex(headers, ['Clôture', 'Close', 'Price', 'Cours', 'Valeur', 'Value']);
+                  
+                  const newPrices: Record<string, number> = {};
+                  let count = 0;
+                  
+                  rows.forEach(row => {
+                      const ticker = clean(row[idxProduct]).toUpperCase();
+                      const price = Math.abs(parseNum(row[idxPrice]));
+                      
+                      if (ticker && price > 0) {
+                          newPrices[ticker] = price;
+                          count++;
+                      }
+                  });
+                  
+                  if (count > 0) {
+                      setPriceData(prev => {
+                          const updated = { ...prev, ...newPrices };
+                          persistData(STORAGE_KEYS.PRICES, updated);
+                          return updated;
+                      });
+                      const today = new Date().toISOString().split('T')[0];
+                      setLastPriceUpdate(today);
+                      updateMeta({ portfolio: new Date().toISOString(), marketDate: today });
+                      alert(`Success: Updated prices for ${count} stocks.`);
+                  } else {
+                      alert("No valid pricing data found in Portfolio CSV (Delimiter detected: " + delimiter + ").");
+                  }
+              }
+              else if (type === 'MARKET_DATA') {
+                  processMarketDataCSV(content);
+              }
+              return; 
+          }
+
+          // --- EXISTING LOGIC FOR INDIAN EQUITY / GENERIC ---
           if (type === 'TRADE_HISTORY') {
+             // Robust header finding
              const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Price']);
              if (headerIdx === -1) {
                  alert("Could not find header row. Expecting 'Date' and 'Price'.");
@@ -743,12 +1017,14 @@ function App() {
 
                  const ticker = clean(row[idxTicker]);
                  const typeStr = idxType !== -1 ? clean(row[idxType]).toUpperCase() : 'BUY'; 
+                 // Ensure Qty and Price are numbers
                  const qty = Math.abs(parseNum(row[idxQty]));
                  const price = Math.abs(parseNum(row[idxPrice]));
                  
                  const tradeType = (typeStr.includes('B') || typeStr.includes('P')) ? TradeType.BUY : TradeType.SELL;
                  const netAmount = tradeType === TradeType.BUY ? -(qty * price) : (qty * price);
 
+                 // Only add if we have valid data
                  if (ticker && qty > 0) {
                      newTrades.push({
                          id: Math.random().toString(36).substr(2, 9),
@@ -762,10 +1038,15 @@ function App() {
                      });
                  }
              });
-             setTrades(newTrades);
-             persistData(STORAGE_KEYS.TRADES, newTrades);
-             updateMeta({ trades: new Date().toISOString() });
-             alert(`Success: Imported ${newTrades.length} trades.`);
+             
+             if (newTrades.length > 0) {
+                 setTrades(newTrades);
+                 persistData(STORAGE_KEYS.TRADES, newTrades);
+                 updateMeta({ trades: new Date().toISOString() });
+                 alert(`Success: Imported ${newTrades.length} trades.`);
+             } else {
+                 alert("No valid trades found. Check CSV format.");
+             }
           }
           else if (type === 'MARKET_DATA') {
             processMarketDataCSV(content);
@@ -809,10 +1090,12 @@ function App() {
                      unrealizedPnL: idxUnrealized !== -1 ? parseNum(row[idxUnrealized]) : 0,
                  })).filter(r => r.scripName && r.scripName !== 'Total' && r.scripName !== '');
 
-                 setPnlData(newPnl);
-                 persistData(STORAGE_KEYS.PNL, newPnl);
-                 updateMeta({ pnl: new Date().toISOString() });
-                 alert(`Success: Imported ${newPnl.length} P&L records.`);
+                 if (newPnl.length > 0) {
+                     setPnlData(newPnl);
+                     persistData(STORAGE_KEYS.PNL, newPnl);
+                     updateMeta({ pnl: new Date().toISOString() });
+                     alert(`Success: Imported ${newPnl.length} P&L records.`);
+                 }
              }
           } 
           else if (type === 'LEDGER') {
@@ -1331,7 +1614,7 @@ function App() {
     </div>
   );
 
-  const renderPortfolio = () => (
+  const renderHoldings = () => (
       <div className="glass-card rounded-2xl overflow-hidden animate-fade-in">
         <div className="p-6 border-b border-white/5 flex gap-4 items-center justify-between">
              <div className="flex items-center gap-4">
@@ -1345,7 +1628,7 @@ function App() {
              )}
         </div>
         <div className="overflow-x-auto">
-             {metrics.portfolioHoldings.length === 0 ? (
+             {metrics.holdings.length === 0 ? (
                  <p className="text-center text-gray-500 py-10 text-sm">No open positions found.</p>
              ) : (
                 <table className="w-full text-left">
@@ -1361,7 +1644,7 @@ function App() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {metrics.portfolioHoldings.map((stock) => (
+                        {metrics.holdings.map((stock) => (
                             <tr key={stock.ticker} className="hover:bg-white/5 transition-colors text-sm group">
                                 <td className="px-6 py-4 font-bold text-white group-hover:text-accent-cyan transition-colors flex items-center gap-2">
                                     {stock.ticker}
@@ -1422,7 +1705,7 @@ function App() {
                             <th className="px-6 py-4">Type</th>
                             <th className="px-6 py-4 text-right">Qty</th>
                             <th className="px-6 py-4 text-right">Price</th>
-                            <th className="px-6 py-4 text-right">Net</th>
+                            <th className="px-6 py-4 text-right">Net Amount</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -1456,12 +1739,15 @@ function App() {
   const renderUpload = () => (
     <div className="max-w-5xl mx-auto mt-6 animate-fade-in pb-20">
         <div className="flex justify-between items-center mb-8">
-            <h3 className="text-2xl font-bold text-white">Data Management</h3>
+            <div>
+                <h3 className="text-2xl font-bold text-white">Data Management</h3>
+                <p className="text-gray-400 text-sm mt-1">Manage data for <span className="text-accent-cyan font-bold">{context.replace(/_/g, ' ')}</span></p>
+            </div>
             <button 
                 onClick={clearAllData}
                 className="px-4 py-2 text-xs font-bold bg-danger/10 text-danger border border-danger/30 rounded-lg hover:bg-danger/20 transition-colors flex items-center gap-2"
             >
-                <Trash2 size={14} /> Reset All Data
+                <Trash2 size={14} /> Reset {context.split('_')[0]} Data
             </button>
         </div>
 
@@ -1575,41 +1861,82 @@ function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { id: 'TRADE_HISTORY', label: 'Trade History', metaKey: 'trades', icon: <History /> },
-                    { id: 'PNL', label: 'P&L Statement', metaKey: 'pnl', icon: <TrendingUp /> },
-                    { id: 'LEDGER', label: 'Ledger Report', metaKey: 'ledger', icon: <Landmark /> },
-                    { id: 'DIVIDEND', label: 'Dividend Report', metaKey: 'dividend', icon: <DollarSign /> },
-                ].map((item) => {
-                    const lastSync = formatLastSync(uploadMeta[item.metaKey as keyof UploadMeta]);
-                    return (
-                        <div key={item.id} className="glass-card rounded-xl p-5 border hover:border-primary/50 transition-colors group relative">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-2 bg-white/5 rounded-lg text-gray-400 group-hover:text-primary-glow group-hover:bg-primary/10 transition-colors">
-                                    {item.icon}
-                                </div>
-                                {lastSync && <CheckCircle2 size={16} className="text-success" />}
-                            </div>
-                            
-                            <h5 className="font-bold text-white mb-1">{item.label}</h5>
-                            <p className="text-[10px] text-gray-500 mb-4 h-4">
-                                {lastSync ? `Updated: ${lastSync}` : 'No data uploaded'}
-                            </p>
+                {context === 'INTERNATIONAL_EQUITY' ? (
+                     <>
+                        {[
+                            { id: 'TRADE_HISTORY', label: 'Transactions', metaKey: 'trades', icon: <History /> },
+                            { id: 'LEDGER', label: 'Account Statement', metaKey: 'dividend', icon: <Landmark /> },
+                            { id: 'PORTFOLIO_SNAPSHOT', label: 'Portfolio', metaKey: 'portfolio', icon: <FileText /> },
+                        ].map((item) => {
+                            const lastSync = formatLastSync(uploadMeta[item.metaKey as keyof UploadMeta]);
+                            return (
+                                <div key={item.id} className="glass-card rounded-xl p-5 border hover:border-primary/50 transition-colors group relative">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-2 bg-white/5 rounded-lg text-gray-400 group-hover:text-primary-glow group-hover:bg-primary/10 transition-colors">
+                                            {item.icon}
+                                        </div>
+                                        {lastSync && <CheckCircle2 size={16} className="text-success" />}
+                                    </div>
+                                    
+                                    <h5 className="font-bold text-white mb-1">{item.label}</h5>
+                                    <p className="text-[10px] text-gray-500 mb-4 h-4">
+                                        {lastSync ? `Updated: ${lastSync}` : 'No data uploaded'}
+                                    </p>
 
-                            <label className="block w-full cursor-pointer">
-                                <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    accept=".csv" 
-                                    onChange={(e) => handleFileUpload(e, item.id as UploadType)} 
-                                />
-                                <div className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-center transition-colors">
-                                    Upload CSV
+                                    <label className="block w-full cursor-pointer">
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            accept=".csv" 
+                                            onChange={(e) => handleFileUpload(e, item.id as UploadType)} 
+                                        />
+                                        <div className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-center transition-colors">
+                                            Upload CSV
+                                        </div>
+                                    </label>
                                 </div>
-                            </label>
-                        </div>
-                    )
-                })}
+                            )
+                        })}
+                     </>
+                ) : (
+                    <>
+                        {[
+                            { id: 'TRADE_HISTORY', label: 'Trade History', metaKey: 'trades', icon: <History /> },
+                            { id: 'PNL', label: 'P&L Statement', metaKey: 'pnl', icon: <TrendingUp /> },
+                            { id: 'LEDGER', label: 'Ledger Report', metaKey: 'ledger', icon: <Landmark /> },
+                            { id: 'DIVIDEND', label: 'Dividend Report', metaKey: 'dividend', icon: <DollarSign /> },
+                        ].map((item) => {
+                            const lastSync = formatLastSync(uploadMeta[item.metaKey as keyof UploadMeta]);
+                            return (
+                                <div key={item.id} className="glass-card rounded-xl p-5 border hover:border-primary/50 transition-colors group relative">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-2 bg-white/5 rounded-lg text-gray-400 group-hover:text-primary-glow group-hover:bg-primary/10 transition-colors">
+                                            {item.icon}
+                                        </div>
+                                        {lastSync && <CheckCircle2 size={16} className="text-success" />}
+                                    </div>
+                                    
+                                    <h5 className="font-bold text-white mb-1">{item.label}</h5>
+                                    <p className="text-[10px] text-gray-500 mb-4 h-4">
+                                        {lastSync ? `Updated: ${lastSync}` : 'No data uploaded'}
+                                    </p>
+
+                                    <label className="block w-full cursor-pointer">
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            accept=".csv" 
+                                            onChange={(e) => handleFileUpload(e, item.id as UploadType)} 
+                                        />
+                                        <div className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-center transition-colors">
+                                            Upload CSV
+                                        </div>
+                                    </label>
+                                </div>
+                            )
+                        })}
+                    </>
+                )}
             </div>
         </div>
 
@@ -1649,7 +1976,7 @@ function App() {
                   Portfolio Intelligence
               </h2>
               <p className="text-gray-400 mt-2 text-sm max-w-lg relative z-10">
-                  Powered by Gemini 2.5 Flash. Ask complex questions about your XIRR, hidden fees, or analyze your dividend yield strategy.
+                  Powered by Gemini 2.5 Flash. Ask complex questions about your XIRR, hidden fees, or analyze your dividend yield strategy for your <span className="text-accent-cyan">{context.replace(/_/g, ' ')}</span> portfolio.
               </p>
           </div>
 
@@ -1703,19 +2030,19 @@ function App() {
   );
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar currentView={currentView} setView={setCurrentView} />
-      
-      <main className="flex-1 ml-64 p-10 relative z-0">
+    <main className="flex-1 ml-64 p-10 relative z-0">
         <header className="flex justify-between items-center mb-10">
             <div>
-                <h1 className="text-3xl font-bold text-white tracking-tight">
+                <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
                     {currentView === ViewState.DASHBOARD && 'Dashboard'}
-                    {currentView === ViewState.PORTFOLIO && 'Portfolio Holdings'}
+                    {currentView === ViewState.HOLDINGS && 'Holdings'}
                     {currentView === ViewState.WATCHLIST && 'Watchlist'}
                     {currentView === ViewState.TRANSACTIONS && 'Transactions'}
                     {currentView === ViewState.UPLOAD && 'Data Import'}
                     {currentView === ViewState.AI_INSIGHTS && 'AI Analyst'}
+                    <span className="text-sm font-medium px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400">
+                        {context.replace(/_/g, ' ')}
+                    </span>
                 </h1>
                 
                 <div className="flex gap-4 mt-3 text-[10px] uppercase font-bold tracking-wider">
@@ -1734,16 +2061,44 @@ function App() {
                      </span>
                 </div>
             </div>
-            {/* Header elements removed here as requested */}
+            
+            <div className="flex items-center gap-3">
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-mono text-gray-400">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    System Online
+                </div>
+            </div>
         </header>
 
         {currentView === ViewState.DASHBOARD && renderDashboard()}
-        {currentView === ViewState.PORTFOLIO && renderPortfolio()}
+        {currentView === ViewState.HOLDINGS && renderHoldings()}
         {currentView === ViewState.WATCHLIST && renderWatchlist()}
         {currentView === ViewState.TRANSACTIONS && renderTransactions()}
         {currentView === ViewState.UPLOAD && renderUpload()}
         {currentView === ViewState.AI_INSIGHTS && renderAI()}
       </main>
+  );
+}
+
+// --- Main App Wrapper ---
+function App() {
+  const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
+  const [context, setContext] = useState<AssetContext>('INDIAN_EQUITY');
+
+  return (
+    <div className="flex min-h-screen">
+      <Sidebar 
+        currentView={currentView} 
+        setView={setCurrentView} 
+        currentContext={context}
+        setContext={setContext}
+      />
+      {/* 
+         The key prop is crucial here. When context changes, React treats this as a different component instance,
+         forcing a full remount. This resets all state hooks inside PortfolioDashboard, causing them to 
+         re-initialize with the new storage keys derived from the new context.
+      */}
+      <PortfolioDashboard key={context} context={context} currentView={currentView} />
     </div>
   );
 }
