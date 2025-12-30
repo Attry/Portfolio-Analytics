@@ -41,8 +41,7 @@ import {
   BarChart3,
   FileText,
   ArrowUpRight,
-  ArrowDownRight,
-  RotateCcw
+  ArrowDownRight
 } from 'lucide-react';
 import {
   BarChart,
@@ -484,25 +483,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
       .filter(([_, data]) => data.qty > 0)
       .map(([ticker, data]) => {
           const pnlRecord = pnlData.find(p => p.scripName.toLowerCase() === ticker.toLowerCase());
-          
-          let livePrice = priceData[ticker.toUpperCase()]; 
-
-          // --- SMART FUZZY MATCHING FOR INTERNATIONAL EQUITY ---
-          if (livePrice === undefined && context === 'INTERNATIONAL_EQUITY') {
-              const cleanTicker = ticker.toUpperCase();
-              const priceKey = Object.keys(priceData).find(pk => {
-                  if (pk.length < 5) return false; 
-                  // 1. Prefix Match: Portfolio (truncated) is prefix of Trade (full)
-                  if (cleanTicker.startsWith(pk)) return true;
-                  // 2. Prefix Match: Trade is prefix of Portfolio
-                  if (pk.startsWith(cleanTicker)) return true;
-                  // 3. First 15 Char Match (Handling skipped last words)
-                  if (cleanTicker.slice(0, 15) === pk.slice(0, 15)) return true;
-                  return false;
-              });
-              if (priceKey) livePrice = priceData[priceKey];
-          }
-          // -----------------------------------------------------
+          const livePrice = priceData[ticker.toUpperCase()]; 
 
           let unrealized = 0;
           let marketValue = data.invested; 
@@ -579,7 +560,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
       hasLiveData: Object.keys(priceData).length > 0,
       tradePerformance
     };
-  }, [pnlData, ledgerData, dividendData, trades, extractedCharges, extractedNetPnL, extractedDividends, extractedCash, priceData, context]);
+  }, [pnlData, ledgerData, dividendData, trades, extractedCharges, extractedNetPnL, extractedDividends, extractedCash, priceData]);
 
   const tickerDistribution = useMemo(() => {
     if (metrics.holdings.length > 0) {
@@ -698,8 +679,226 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
     }
   };
 
-  const processIndianEquityUpload = (content: string, type: UploadType, rawRows: string[][]) => {
-      if (type === 'TRADE_HISTORY') {
+  const handleGoogleSheetFetch = async () => {
+    if (!sheetId || !marketDate) {
+        alert("Please provide both Sheet ID and Date.");
+        return;
+    }
+    
+    setIsFetchingSheet(true);
+    try {
+        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch sheet: ${response.statusText}`);
+        }
+        const csvText = await response.text();
+        if (csvText.toLowerCase().includes('<!doctype html>')) {
+             throw new Error("Access denied. Please ensure the Sheet is 'Published to the web'.");
+        }
+        processMarketDataCSV(csvText);
+    } catch (error: any) {
+        console.error("Google Sheet Fetch Error:", error);
+        alert(`Failed to fetch data: ${error.message}`);
+    } finally {
+        setIsFetchingSheet(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        if (sheetId && marketDate) {
+            handleGoogleSheetFetch();
+        }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [sheetId]); 
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: UploadType) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (type === 'MARKET_DATA' && !marketDate) {
+        alert("Please select the Date of Market Data before uploading.");
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      if (content) {
+        try {
+          const firstLine = content.substring(0, 1000).split('\n')[0];
+          const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
+          const splitRegex = delimiter === ';' ? /;(?=(?:(?:[^"]*"){2})*[^"]*$)/ : /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+
+          const lines = content.split('\n').filter(line => line.trim() !== '');
+          const rawRows = lines.map(line => line.split(splitRegex));
+          setLastUploadPreview(rawRows.slice(0, 5));
+          
+          if (context === 'INTERNATIONAL_EQUITY') {
+              if (type === 'TRADE_HISTORY') {
+                  const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Produit', 'Quantité']);
+                  if (headerIdx === -1) {
+                        alert("Could not find Degiro transactions header. Expecting 'Date', 'Produit' and 'Quantité'.");
+                        return;
+                  }
+                  
+                  const headers = rawRows[headerIdx];
+                  setLastUploadHeaders(headers);
+                  const rows = rawRows.slice(headerIdx + 1);
+
+                  const idxDate = getColIndex(headers, ['Date']);
+                  const idxTicker = getColIndex(headers, ['Produit', 'Product']);
+                  const idxQty = getColIndex(headers, ['Quantité', 'Quantity', 'Quantite']); 
+                  const idxPrice = getColIndex(headers, ['Cours', 'Price']);
+                  const idxNetEUR = getColIndex(headers, ['Montant négocié EUR', 'Montant negocie EUR', 'Montant EUR', 'Net Amount', 'Total']); 
+
+                  const newTrades: Trade[] = [];
+                  rows.forEach(row => {
+                      const dateStr = parseIndianDate(clean(row[idxDate] || ''));
+                      if (!dateStr) return;
+
+                      const ticker = clean(row[idxTicker] || '');
+                      const qtyRaw = parseNum(row[idxQty] || '');
+                      const qty = Math.abs(qtyRaw);
+                      const price = Math.abs(parseNum(row[idxPrice] || ''));
+                      const tradeType = qtyRaw > 0 ? TradeType.BUY : TradeType.SELL;
+                      let netAmount = 0;
+                      if (idxNetEUR !== -1 && row[idxNetEUR]) {
+                          netAmount = parseNum(row[idxNetEUR]);
+                      } else {
+                          netAmount = tradeType === TradeType.BUY ? -(qty * price) : (qty * price);
+                      }
+
+                      if (ticker && qty > 0) {
+                          newTrades.push({
+                              id: Math.random().toString(36).substr(2, 9),
+                              date: dateStr,
+                              ticker,
+                              type: tradeType,
+                              quantity: qty,
+                              price,
+                              netAmount,
+                              status: 'TRADED'
+                          });
+                      }
+                  });
+
+                  if (newTrades.length > 0) {
+                    setTrades(newTrades);
+                    persistData(STORAGE_KEYS.TRADES, newTrades);
+                    updateMeta({ trades: new Date().toISOString() });
+                    alert(`Success: Imported ${newTrades.length} Degiro transactions.`);
+                  } else {
+                    alert("No valid trades parsed. Check CSV format.");
+                  }
+              }
+              else if (type === 'LEDGER') {
+                   const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Description']);
+                   if (headerIdx !== -1) {
+                       const headers = rawRows[headerIdx];
+                       setLastUploadHeaders(headers);
+                       const rows = rawRows.slice(headerIdx + 1);
+                       
+                       const idxDate = getColIndex(headers, ['Date', 'Value Date']);
+                       const idxDesc = getColIndex(headers, ['Description']);
+                       const idxTicker = getColIndex(headers, ['Produit', 'Product']);
+                       const idxMovements = getColIndex(headers, ['Mouvements', 'Movement', 'Amount', 'Montant']);
+                       
+                       const newDividends: DividendRecord[] = [];
+                       
+                       rows.forEach(row => {
+                           const desc = clean(row[idxDesc] || '');
+                           if (desc.toLowerCase().includes('dividend') || desc.toLowerCase().includes('dividende')) {
+                               if (desc.toLowerCase().includes('tax') || desc.toLowerCase().includes('impôt')) return;
+
+                               const dateStr = parseIndianDate(clean(row[idxDate] || ''));
+                               if (!dateStr) return;
+                               
+                               const scripName = idxTicker !== -1 ? clean(row[idxTicker] || '') : 'Unknown';
+                               
+                               let amount = 0;
+                               if (idxMovements !== -1) {
+                                   let val = parseNum(row[idxMovements] || '');
+                                   if (val === 0 && row[idxMovements + 1]) {
+                                       val = parseNum(row[idxMovements + 1] || '');
+                                   }
+                                   amount = Math.abs(val);
+                               }
+
+                               if (amount > 0) {
+                                   newDividends.push({
+                                       date: dateStr,
+                                       scripName, 
+                                       amount
+                                   });
+                               }
+                           }
+                       });
+
+                       if (newDividends.length > 0) {
+                           setDividendData(newDividends);
+                           persistData(STORAGE_KEYS.DIVIDENDS, newDividends);
+                           updateMeta({ dividend: new Date().toISOString() });
+                           alert(`Success: Imported ${newDividends.length} Dividend records.`);
+                       } else {
+                           alert("No dividend entries found in Account CSV.");
+                       }
+                   } else {
+                       alert("Could not find Degiro Account headers (Date, Description).");
+                   }
+              }
+              else if (type === 'PORTFOLIO_SNAPSHOT') {
+                  const headerIdx = findHeaderRowIndex(rawRows, ['Produit', 'Clôture']); 
+                  if (headerIdx === -1) {
+                       alert("Could not find Degiro Portfolio headers (Produit, Clôture).");
+                       return;
+                  }
+
+                  const finalIdx = headerIdx;
+                  const headers = rawRows[finalIdx];
+                  setLastUploadHeaders(headers);
+                  const rows = rawRows.slice(finalIdx + 1);
+                  
+                  const idxProduct = getColIndex(headers, ['Produit', 'Product']);
+                  const idxPrice = getColIndex(headers, ['Clôture', 'Close', 'Price']);
+                  
+                  const newPrices: Record<string, number> = {};
+                  let count = 0;
+                  
+                  rows.forEach(row => {
+                      const ticker = clean(row[idxProduct] || '').toUpperCase();
+                      const price = Math.abs(parseNum(row[idxPrice] || ''));
+                      
+                      if (ticker && price > 0) {
+                          newPrices[ticker] = price;
+                          count++;
+                      }
+                  });
+                  
+                  if (count > 0) {
+                      setPriceData(prev => {
+                          const updated = { ...prev, ...newPrices };
+                          persistData(STORAGE_KEYS.PRICES, updated);
+                          return updated;
+                      });
+                      const today = new Date().toISOString().split('T')[0];
+                      setLastPriceUpdate(today);
+                      updateMeta({ portfolio: new Date().toISOString(), marketDate: today });
+                      alert(`Success: Updated prices for ${count} stocks.`);
+                  } else {
+                      alert("No valid pricing data found in Portfolio CSV.");
+                  }
+              }
+              else if (type === 'MARKET_DATA') {
+                  processMarketDataCSV(content);
+              }
+              return; 
+          }
+
+          if (type === 'TRADE_HISTORY') {
              const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Price']);
              if (headerIdx === -1) {
                  alert("Could not find header row. Expecting 'Date' and 'Price'.");
@@ -749,11 +948,11 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
              } else {
                  alert("No valid trades found. Check CSV format.");
              }
-      }
-      else if (type === 'MARKET_DATA') {
+          }
+          else if (type === 'MARKET_DATA') {
             processMarketDataCSV(content);
-      }
-      else if (type === 'PNL') {
+          }
+          else if (type === 'PNL') {
              const totalCharges = findValueInFooter(rawRows, ['Total Charges', 'Charges']);
              if (totalCharges !== null) {
                  setExtractedCharges(totalCharges);
@@ -797,9 +996,9 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                      updateMeta({ pnl: new Date().toISOString() });
                      alert(`Success: Imported ${newPnl.length} P&L records.`);
                  }
-            }
-      } 
-      else if (type === 'LEDGER') {
+             }
+          } 
+          else if (type === 'LEDGER') {
              const closingBal = findValueInFooter(rawRows, ['Closing Balance', 'Balance']);
              if (closingBal !== null) {
                  setExtractedCash(closingBal);
@@ -831,8 +1030,8 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                  updateMeta({ ledger: new Date().toISOString() });
              }
              alert(`Success: Ledger imported.`);
-      }
-      else if (type === 'DIVIDEND') {
+          }
+          else if (type === 'DIVIDEND') {
              const totalDiv = findValueInFooter(rawRows, ['Total Dividend Earned', 'Total Dividend', 'Total']);
              if (totalDiv !== null) {
                  setExtractedDividends(totalDiv);
@@ -910,249 +1109,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                      alert("Could not detect headers or 'Total Dividend' footer.");
                  }
              }
-      }
-  };
-
-  const processInternationalEquityUpload = (content: string, type: UploadType, rawRows: string[][]) => {
-      if (type === 'TRADE_HISTORY') {
-          const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Produit', 'Quantité']);
-          if (headerIdx === -1) {
-                alert("Could not find Degiro transactions header. Expecting 'Date', 'Produit' and 'Quantité'.");
-                return;
           }
-          
-          const headers = rawRows[headerIdx];
-          setLastUploadHeaders(headers);
-          const rows = rawRows.slice(headerIdx + 1);
-
-          const idxDate = getColIndex(headers, ['Date']);
-          const idxTime = getColIndex(headers, ['Heure', 'Time']); // Added Time Detection
-          const idxTicker = getColIndex(headers, ['Produit', 'Product']);
-          const idxQty = getColIndex(headers, ['Quantité', 'Quantity', 'Quantite']); 
-          const idxPrice = getColIndex(headers, ['Cours', 'Price']);
-          const idxNetEUR = getColIndex(headers, ['Montant négocié EUR', 'Montant negocie EUR', 'Montant EUR', 'Net Amount', 'Total']); 
-
-          const newTrades: Trade[] = [];
-          
-          // Degiro exports are usually Newest First (Descending).
-          // We reverse them to Oldest First so that if Date & Time are identical (or Time missing),
-          // we process the Buy (which happened first) before the Sell (which happened later).
-          const orderedRows = [...rows].reverse();
-
-          orderedRows.forEach(row => {
-              let dateStr = parseIndianDate(clean(row[idxDate] || ''));
-              if (!dateStr) return;
-
-              // If 'Heure'/'Time' column exists, append it to the date string
-              // This creates a precise ISO-like string (YYYY-MM-DDTHH:MM) for sorting
-              if (idxTime !== -1) {
-                  const timeStr = clean(row[idxTime] || '');
-                  if (timeStr && timeStr.includes(':')) {
-                      dateStr = `${dateStr}T${timeStr}`;
-                  }
-              }
-
-              const ticker = clean(row[idxTicker] || '');
-              const qtyRaw = parseNum(row[idxQty] || '');
-              const qty = Math.abs(qtyRaw);
-              const price = Math.abs(parseNum(row[idxPrice] || ''));
-              const tradeType = qtyRaw > 0 ? TradeType.BUY : TradeType.SELL;
-              let netAmount = 0;
-              if (idxNetEUR !== -1 && row[idxNetEUR]) {
-                  netAmount = parseNum(row[idxNetEUR]);
-              } else {
-                  netAmount = tradeType === TradeType.BUY ? -(qty * price) : (qty * price);
-              }
-
-              if (ticker && qty > 0) {
-                  newTrades.push({
-                      id: Math.random().toString(36).substr(2, 9),
-                      date: dateStr,
-                      ticker,
-                      type: tradeType,
-                      quantity: qty,
-                      price,
-                      netAmount,
-                      status: 'TRADED'
-                  });
-              }
-          });
-
-          if (newTrades.length > 0) {
-            setTrades(newTrades);
-            persistData(STORAGE_KEYS.TRADES, newTrades);
-            updateMeta({ trades: new Date().toISOString() });
-            alert(`Success: Imported ${newTrades.length} Degiro transactions.`);
-          } else {
-            alert("No valid trades parsed. Check CSV format.");
-          }
-      }
-      else if (type === 'LEDGER') {
-           const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Description']);
-           if (headerIdx !== -1) {
-               const headers = rawRows[headerIdx];
-               setLastUploadHeaders(headers);
-               const rows = rawRows.slice(headerIdx + 1);
-               
-               const idxDate = getColIndex(headers, ['Date', 'Value Date']);
-               const idxDesc = getColIndex(headers, ['Description']);
-               const idxTicker = getColIndex(headers, ['Produit', 'Product']);
-               const idxMovements = getColIndex(headers, ['Mouvements', 'Movement', 'Amount', 'Montant']);
-               
-               const newDividends: DividendRecord[] = [];
-               
-               rows.forEach(row => {
-                   const desc = clean(row[idxDesc] || '');
-                   if (desc.toLowerCase().includes('dividend') || desc.toLowerCase().includes('dividende')) {
-                       if (desc.toLowerCase().includes('tax') || desc.toLowerCase().includes('impôt')) return;
-
-                       const dateStr = parseIndianDate(clean(row[idxDate] || ''));
-                       if (!dateStr) return;
-                       
-                       const scripName = idxTicker !== -1 ? clean(row[idxTicker] || '') : 'Unknown';
-                       
-                       let amount = 0;
-                       if (idxMovements !== -1) {
-                           let val = parseNum(row[idxMovements] || '');
-                           if (val === 0 && row[idxMovements + 1]) {
-                               val = parseNum(row[idxMovements + 1] || '');
-                           }
-                           amount = Math.abs(val);
-                       }
-
-                       if (amount > 0) {
-                           newDividends.push({
-                               date: dateStr,
-                               scripName, 
-                               amount
-                           });
-                       }
-                   }
-               });
-
-               if (newDividends.length > 0) {
-                   setDividendData(newDividends);
-                   persistData(STORAGE_KEYS.DIVIDENDS, newDividends);
-                   updateMeta({ dividend: new Date().toISOString(), ledger: new Date().toISOString() });
-                   alert(`Success: Imported ${newDividends.length} Dividend records.`);
-               } else {
-                   alert("No dividend entries found in Account CSV.");
-               }
-           } else {
-               alert("Could not find Degiro Account headers (Date, Description).");
-           }
-      }
-      else if (type === 'PORTFOLIO_SNAPSHOT') {
-          const headerIdx = findHeaderRowIndex(rawRows, ['Produit', 'Clôture']); 
-          if (headerIdx === -1) {
-               alert("Could not find Degiro Portfolio headers (Produit, Clôture).");
-               return;
-          }
-
-          const finalIdx = headerIdx;
-          const headers = rawRows[finalIdx];
-          setLastUploadHeaders(headers);
-          const rows = rawRows.slice(finalIdx + 1);
-          
-          const idxProduct = getColIndex(headers, ['Produit', 'Product']);
-          const idxPrice = getColIndex(headers, ['Clôture', 'Close', 'Price']);
-          
-          const newPrices: Record<string, number> = {};
-          let count = 0;
-          
-          rows.forEach(row => {
-              const ticker = clean(row[idxProduct] || '').toUpperCase();
-              const price = Math.abs(parseNum(row[idxPrice] || ''));
-              
-              if (ticker && price > 0) {
-                  newPrices[ticker] = price;
-                  count++;
-              }
-          });
-          
-          if (count > 0) {
-              setPriceData(prev => {
-                  const updated = { ...prev, ...newPrices };
-                  persistData(STORAGE_KEYS.PRICES, updated);
-                  return updated;
-              });
-              const today = new Date().toISOString().split('T')[0];
-              setLastPriceUpdate(today);
-              updateMeta({ portfolio: new Date().toISOString(), marketDate: today });
-              alert(`Success: Updated prices for ${count} stocks.`);
-          } else {
-              alert("No valid pricing data found in Portfolio CSV.");
-          }
-      }
-      else if (type === 'MARKET_DATA') {
-          processMarketDataCSV(content);
-      }
-  };
-
-  const handleGoogleSheetFetch = async () => {
-    if (!sheetId || !marketDate) {
-        alert("Please provide both Sheet ID and Date.");
-        return;
-    }
-    
-    setIsFetchingSheet(true);
-    try {
-        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch sheet: ${response.statusText}`);
-        }
-        const csvText = await response.text();
-        if (csvText.toLowerCase().includes('<!doctype html>')) {
-             throw new Error("Access denied. Please ensure the Sheet is 'Published to the web'.");
-        }
-        processMarketDataCSV(csvText);
-    } catch (error: any) {
-        console.error("Google Sheet Fetch Error:", error);
-        alert(`Failed to fetch data: ${error.message}`);
-    } finally {
-        setIsFetchingSheet(false);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        if (sheetId && marketDate) {
-            handleGoogleSheetFetch();
-        }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [sheetId]); 
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: UploadType) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (type === 'MARKET_DATA' && !marketDate) {
-        alert("Please select the Date of Market Data before uploading.");
-        event.target.value = '';
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      if (content) {
-        try {
-          const firstLine = content.substring(0, 1000).split('\n')[0];
-          const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
-          const splitRegex = delimiter === ';' ? /;(?=(?:(?:[^"]*"){2})*[^"]*$)/ : /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-
-          const lines = content.split('\n').filter(line => line.trim() !== '');
-          const rawRows = lines.map(line => line.split(splitRegex));
-          setLastUploadPreview(rawRows.slice(0, 5));
-
-          if (context === 'INDIAN_EQUITY') {
-              processIndianEquityUpload(content, type, rawRows);
-          } else if (context === 'INTERNATIONAL_EQUITY') {
-              processInternationalEquityUpload(content, type, rawRows);
-          }
-          // Add other contexts here
         } catch (error) {
           console.error("Error parsing CSV:", error);
           alert("Error parsing CSV. Please check the console.");
@@ -1196,27 +1153,6 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
           return acc + (perf ? perf.realizedPnL : 0);
       }, 0);
   }, [filteredTrades, metrics.tradePerformance]);
-
-  const getUploadOptions = (ctx: AssetContext) => {
-      if (ctx === 'INDIAN_EQUITY') {
-          return [
-             { id: 'TRADE_HISTORY', label: 'Trade History', icon: <History />, desc: 'CSV with Date, Ticker, Qty, Price', visible: true },
-             { id: 'PNL', label: 'P&L Report', icon: <FileSpreadsheet />, desc: 'Extract Charges & Net P&L', visible: true },
-             { id: 'LEDGER', label: 'Ledger', icon: <FileText />, desc: 'Extract Cash Balance', visible: true },
-             { id: 'DIVIDEND', label: 'Dividends', icon: <Coins />, desc: 'Extract Dividend Payouts', visible: true },
-             { id: 'MARKET_DATA', label: 'Market Prices', icon: <LineChartIcon />, desc: 'CSV or Sheet Sync', visible: true },
-          ];
-      }
-      if (ctx === 'INTERNATIONAL_EQUITY') {
-          return [
-             { id: 'TRADE_HISTORY', label: 'Trade History', icon: <History />, desc: 'Degiro Transactions CSV', visible: true },
-             { id: 'LEDGER', label: 'Account Statement', icon: <FileText />, desc: 'Degiro Account CSV (Dividends)', visible: true },
-             { id: 'PORTFOLIO_SNAPSHOT', label: 'Portfolio', icon: <Briefcase />, desc: 'Degiro Portfolio CSV (Prices)', visible: true },
-             { id: 'MARKET_DATA', label: 'Market Prices', icon: <LineChartIcon />, desc: 'General Market Data CSV', visible: true },
-          ];
-      }
-      return [];
-  };
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto h-full pb-24">
@@ -1721,7 +1657,13 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         {/* --- UPLOAD VIEW --- */}
         {currentView === ViewState.UPLOAD && (
              <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-                 {getUploadOptions(context).map((type) => (
+                 {[
+                     { id: 'TRADE_HISTORY', label: 'Trade History', icon: <History />, desc: 'CSV with Date, Ticker, Qty, Price' },
+                     { id: 'PNL', label: 'P&L Report', icon: <FileSpreadsheet />, desc: 'CSV with Realized/Unrealized P&L' },
+                     { id: 'LEDGER', label: 'Ledger', icon: <FileText />, desc: 'CSV with Credits/Debits' },
+                     { id: 'DIVIDEND', label: 'Dividends', icon: <Coins />, desc: 'CSV with Dividend Payouts' },
+                     { id: 'MARKET_DATA', label: 'Market Prices', icon: <LineChartIcon />, desc: 'CSV with Ticker, Current Price' },
+                 ].map((type) => (
                      <div key={type.id} className="glass-card rounded-2xl p-6 border border-white/5 hover:border-primary/30 transition-all group relative overflow-hidden">
                          <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                          <div className="relative z-10">
@@ -1736,53 +1678,18 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                             </div>
                             
                             {type.id === 'MARKET_DATA' && (
-                                <div className="space-y-3 mb-4 bg-black/20 p-3 rounded-xl border border-white/5">
-                                    <div>
-                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1 block">Data Date</label>
-                                        <input 
-                                            type="date" 
-                                            value={marketDate}
-                                            onChange={(e) => {
-                                                setMarketDate(e.target.value);
-                                                updateMeta({ marketDate: e.target.value });
-                                            }}
-                                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1 block">Google Sheet ID</label>
-                                         <div className="flex gap-2">
-                                             <input 
-                                                type="text" 
-                                                value={sheetId}
-                                                onChange={(e) => setSheetId(e.target.value)}
-                                                placeholder="Sheet ID"
-                                                className="flex-1 bg-black/40 border border-white/10 rounded-lg p-2 text-white text-xs font-mono focus:outline-none focus:border-primary/50 transition-colors"
-                                            />
-                                            <button 
-                                                onClick={() => {
-                                                    setMarketDate('');
-                                                    setSheetId('');
-                                                }}
-                                                className="px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
-                                                title="Reset Fields"
-                                            >
-                                                <RotateCcw size={14} />
-                                            </button>
-                                            <button 
-                                                onClick={handleGoogleSheetFetch}
-                                                disabled={isFetchingSheet}
-                                                className="px-3 py-1 bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded-lg text-primary-glow text-xs font-bold transition-colors flex items-center gap-1"
-                                            >
-                                                {isFetchingSheet ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                                                Sync
-                                            </button>
-                                         </div>
-                                    </div>
-                                </div>
+                                <input 
+                                    type="date" 
+                                    value={marketDate}
+                                    onChange={(e) => {
+                                        setMarketDate(e.target.value);
+                                        updateMeta({ marketDate: e.target.value });
+                                    }}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-sm mb-3 focus:outline-none focus:border-primary/50"
+                                />
                             )}
 
-                            <label className="flex items-center justify-center w-full py-3 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-primary/50 hover:text-primary-glow transition-all text-gray-400 text-sm font-medium bg-white/5 hover:bg-white/10">
+                            <label className="flex items-center justify-center w-full py-3 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-primary/50 hover:text-primary-glow transition-all text-gray-400 text-sm font-medium">
                                 <UploadCloud className="w-4 h-4 mr-2" />
                                 <span>Select CSV</span>
                                 <input 
@@ -1795,22 +1702,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                             
                             {/* Last Uploaded Info */}
                             {type.id === 'TRADE_HISTORY' && uploadMeta.trades && (
-                                <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.trades)}</p>
-                            )}
-                            {type.id === 'PNL' && uploadMeta.pnl && (
-                                <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.pnl)}</p>
-                            )}
-                            {type.id === 'LEDGER' && uploadMeta.ledger && (
-                                <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.ledger)}</p>
-                            )}
-                            {type.id === 'DIVIDEND' && uploadMeta.dividend && (
-                                <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.dividend)}</p>
-                            )}
-                            {type.id === 'PORTFOLIO_SNAPSHOT' && uploadMeta.portfolio && (
-                                <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.portfolio)}</p>
-                            )}
-                            {type.id === 'MARKET_DATA' && uploadMeta.market && (
-                                <p className="text-[10px] text-accent-cyan mt-2 flex items-center justify-center bg-accent-cyan/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.market)}</p>
+                                <p className="text-[10px] text-success mt-2 flex items-center justify-center"><CheckCircle2 size={10} className="mr-1"/> Updated: {formatLastSync(uploadMeta.trades)}</p>
                             )}
                          </div>
                      </div>
