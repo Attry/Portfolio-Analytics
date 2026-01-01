@@ -1052,6 +1052,15 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
            }
       }
       else if (type === 'PORTFOLIO_SNAPSHOT') {
+          // Extract cash from cell 2G (Row 2, Column G -> index 1, 6)
+          if (rawRows.length > 1 && rawRows[1].length > 6) {
+              const cashVal = parseNum(rawRows[1][6]);
+              if (cashVal !== 0) {
+                  setExtractedCash(cashVal);
+                  saveSummary({ cash: cashVal });
+              }
+          }
+
           const headerIdx = findHeaderRowIndex(rawRows, ['Produit', 'Clôture']); 
           if (headerIdx === -1) {
                alert("Could not find Degiro Portfolio headers (Produit, Clôture).");
@@ -1088,7 +1097,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
               const today = new Date().toISOString().split('T')[0];
               setLastPriceUpdate(today);
               updateMeta({ portfolio: new Date().toISOString(), marketDate: today });
-              alert(`Success: Updated prices for ${count} stocks.`);
+              alert(`Success: Updated prices for ${count} stocks and synced cash balance.`);
           } else {
               alert("No valid pricing data found in Portfolio CSV.");
           }
@@ -1318,7 +1327,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                          <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                             <BarChart3 className="w-5 h-5 text-primary-glow" /> Performance Summary
                         </h3>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                                 <p className="text-xs text-gray-400 uppercase tracking-wider">Realized P&L</p>
                                 <p className={`text-xl font-bold mt-1 ${metrics.grossRealizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
@@ -1335,6 +1344,12 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                 <p className="text-xs text-gray-400 uppercase tracking-wider">Charges & Taxes</p>
                                 <p className="text-xl font-bold mt-1 text-danger">
                                     ₹{metrics.charges.toLocaleString()}
+                                </p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                                <p className="text-xs text-gray-400 uppercase tracking-wider">Cash Balance</p>
+                                <p className="text-xl font-bold mt-1 text-accent-cyan">
+                                    ₹{metrics.cashBalance.toLocaleString()}
                                 </p>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
