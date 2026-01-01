@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { StatsCard } from './components/StatsCard';
@@ -492,11 +493,8 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
               const cleanTicker = ticker.toUpperCase();
               const priceKey = Object.keys(priceData).find(pk => {
                   if (pk.length < 5) return false; 
-                  // 1. Prefix Match: Portfolio (truncated) is prefix of Trade (full)
                   if (cleanTicker.startsWith(pk)) return true;
-                  // 2. Prefix Match: Trade is prefix of Portfolio
                   if (pk.startsWith(cleanTicker)) return true;
-                  // 3. First 15 Char Match (Handling skipped last words)
                   if (cleanTicker.slice(0, 15) === pk.slice(0, 15)) return true;
                   return false;
               });
@@ -926,25 +924,25 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
           const rows = rawRows.slice(headerIdx + 1);
 
           const idxDate = getColIndex(headers, ['Date']);
-          const idxTime = getColIndex(headers, ['Heure', 'Time']); // Added Time Detection
+          const idxTime = getColIndex(headers, ['Heure', 'Time']);
           const idxTicker = getColIndex(headers, ['Produit', 'Product']);
           const idxQty = getColIndex(headers, ['Quantité', 'Quantity', 'Quantite']); 
           const idxPrice = getColIndex(headers, ['Cours', 'Price']);
           const idxNetEUR = getColIndex(headers, ['Montant négocié EUR', 'Montant negocie EUR', 'Montant EUR', 'Net Amount', 'Total']); 
+          
+          // Fee/Tax Columns Logic
+          const idxAutoFX = getColIndex(headers, ['Frais conversion AutoFX', 'AutoFX']);
+          const idxBrokerage = getColIndex(headers, ['Frais de courtage et/ou de parties', 'Courtage', 'Brokerage', 'Commission']);
 
           const newTrades: Trade[] = [];
+          let totalFeesAccumulated = 0;
           
-          // Degiro exports are usually Newest First (Descending).
-          // We reverse them to Oldest First so that if Date & Time are identical (or Time missing),
-          // we process the Buy (which happened first) before the Sell (which happened later).
           const orderedRows = [...rows].reverse();
 
           orderedRows.forEach(row => {
               let dateStr = parseIndianDate(clean(row[idxDate] || ''));
               if (!dateStr) return;
 
-              // If 'Heure'/'Time' column exists, append it to the date string
-              // This creates a precise ISO-like string (YYYY-MM-DDTHH:MM) for sorting
               if (idxTime !== -1) {
                   const timeStr = clean(row[idxTime] || '');
                   if (timeStr && timeStr.includes(':')) {
@@ -957,6 +955,12 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
               const qty = Math.abs(qtyRaw);
               const price = Math.abs(parseNum(row[idxPrice] || ''));
               const tradeType = qtyRaw > 0 ? TradeType.BUY : TradeType.SELL;
+              
+              // Accumulate Charges
+              const autoFXFee = idxAutoFX !== -1 ? Math.abs(parseNum(row[idxAutoFX] || '')) : 0;
+              const brokerageFee = idxBrokerage !== -1 ? Math.abs(parseNum(row[idxBrokerage] || '')) : 0;
+              totalFeesAccumulated += (autoFXFee + brokerageFee);
+
               let netAmount = 0;
               if (idxNetEUR !== -1 && row[idxNetEUR]) {
                   netAmount = parseNum(row[idxNetEUR]);
@@ -981,8 +985,13 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
           if (newTrades.length > 0) {
             setTrades(newTrades);
             persistData(STORAGE_KEYS.TRADES, newTrades);
+            
+            // Save cumulative charges
+            setExtractedCharges(totalFeesAccumulated);
+            saveSummary({ charges: totalFeesAccumulated });
+
             updateMeta({ trades: new Date().toISOString() });
-            alert(`Success: Imported ${newTrades.length} Degiro transactions.`);
+            alert(`Success: Imported ${newTrades.length} Degiro transactions with ${totalFeesAccumulated.toFixed(2)} in total charges/taxes.`);
           } else {
             alert("No valid trades parsed. Check CSV format.");
           }
@@ -1152,7 +1161,6 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
           } else if (context === 'INTERNATIONAL_EQUITY') {
               processInternationalEquityUpload(content, type, rawRows);
           }
-          // Add other contexts here
         } catch (error) {
           console.error("Error parsing CSV:", error);
           alert("Error parsing CSV. Please check the console.");
@@ -1379,7 +1387,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
             </div>
         )}
 
-        {/* --- TRANSACTIONS VIEW (Restored) --- */}
+        {/* --- TRANSACTIONS VIEW --- */}
         {currentView === ViewState.TRANSACTIONS && (
             <div className="glass-card rounded-2xl overflow-hidden animate-fade-in flex flex-col h-full">
                 <div className="p-6 border-b border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shrink-0">
@@ -1475,7 +1483,6 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                                 {trade.netAmount > 0 ? '+' : ''}₹{Math.abs(trade.netAmount).toLocaleString()}
                                             </td>
                                             
-                                            {/* Performance Columns */}
                                             <td className="px-6 py-4 text-right font-mono font-bold">
                                                 {hasPerf ? (
                                                     <span className={`flex items-center justify-end gap-1 ${perf.realizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
@@ -1506,7 +1513,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
             </div>
         )}
 
-        {/* --- WATCHLIST VIEW (Restored) --- */}
+        {/* --- WATCHLIST VIEW --- */}
         {currentView === ViewState.WATCHLIST && (
             <div className="glass-card rounded-2xl overflow-hidden animate-fade-in relative min-h-[500px]">
                 <div className="p-6 border-b border-white/5 flex gap-4 items-center justify-between">
