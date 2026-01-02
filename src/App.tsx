@@ -297,14 +297,13 @@ const getColIndex = (headers: string[], possibleNames: string[]): number => {
 };
 
 // --- Inner Component: Handles the Logic for a Specific Portfolio Context ---
-const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetContext, currentView: ViewState, setView: (view: ViewState) => void }) => {
+const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewState, setView: (view: ViewState) => void }> = ({ context, currentView, setView }) => {
   const [uploadType, setUploadType] = useState<UploadType>('TRADE_HISTORY');
   const STORAGE_KEYS = useMemo(() => getStorageKeys(context), [context]);
 
   const currencySymbol = useMemo(() => {
-      if (context === 'INTERNATIONAL_EQUITY') return '€';
-      if (context === 'USD_ASSETS') return '$';
-      return '₹';
+    if (context === 'INTERNATIONAL_EQUITY') return '€';
+    return '₹';
   }, [context]);
 
   const [trades, setTrades] = useState<Trade[]>(() => {
@@ -325,7 +324,7 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
   });
   const [priceData, setPriceData] = useState<Record<string, number>>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.PRICES);
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved) : {};
   });
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.WATCHLIST);
@@ -1038,8 +1037,9 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
               const currency = clean(row[7] || 'EUR').toUpperCase(); // Column H
               const valStr = clean(row[8] || '0');                   // Column I
 
-              // Handle European number format (comma as decimal: "2,21" -> 2.21)
-              let amountVal = parseFloat(valStr.replace(',', '.'));
+              // Handle European number format (1.250,50 -> 1250.50)
+              // Remove thousands separators (.) then replace decimal separator (,) with (.)
+              let amountVal = parseFloat(valStr.replace(/\./g, '').replace(',', '.'));
 
               if (!isNaN(amountVal) && amountVal !== 0) {
                 // 3. Currency Conversion to EURO
@@ -1292,19 +1292,19 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatsCard 
                         title="Current Value" 
-                        value={`₹${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
+                        value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
                         icon={<Wallet />}
                         change={metrics.totalInvested > 0 ? `${((metrics.unrealizedPnL / metrics.totalInvested) * 100).toFixed(2)}%` : undefined}
                         isPositive={metrics.unrealizedPnL >= 0}
                     />
                     <StatsCard 
                         title="Total Invested" 
-                        value={`₹${metrics.totalInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
+                        value={`${currencySymbol}${metrics.totalInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
                         icon={<Briefcase />} 
                     />
                     <StatsCard 
                         title="Unrealized P&L" 
-                        value={`₹${metrics.unrealizedPnL.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
+                        value={`${currencySymbol}${metrics.unrealizedPnL.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
                         icon={<TrendingUp />} 
                         isPositive={metrics.unrealizedPnL >= 0}
                     />
@@ -1341,7 +1341,7 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
                                     <Tooltip 
                                         contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#333', borderRadius: '8px' }}
                                         itemStyle={{ color: '#fff' }}
-                                        formatter={(value: number) => `₹${value.toLocaleString()}`}
+                                        formatter={(value: number) => `${currencySymbol}${value.toLocaleString()}`}
                                     />
                                     <Legend />
                                 </PieChart>
@@ -1358,31 +1358,31 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                                 <p className="text-xs text-gray-400 uppercase tracking-wider">Realized P&L</p>
                                 <p className={`text-xl font-bold mt-1 ${metrics.grossRealizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-                                    ₹{metrics.grossRealizedPnL.toLocaleString()}
+                                    {currencySymbol}{metrics.grossRealizedPnL.toLocaleString()}
                                 </p>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                                 <p className="text-xs text-gray-400 uppercase tracking-wider">Dividends</p>
                                 <p className="text-xl font-bold mt-1 text-accent-cyan">
-                                    ₹{metrics.totalDividends.toLocaleString()}
+                                    {currencySymbol}{metrics.totalDividends.toLocaleString()}
                                 </p>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                                 <p className="text-xs text-gray-400 uppercase tracking-wider">Charges & Taxes</p>
                                 <p className="text-xl font-bold mt-1 text-danger">
-                                    ₹{metrics.charges.toLocaleString()}
+                                    {currencySymbol}{metrics.charges.toLocaleString()}
                                 </p>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                                 <p className="text-xs text-gray-400 uppercase tracking-wider">Cash Balance</p>
                                 <p className="text-xl font-bold mt-1 text-accent-cyan">
-                                    ₹{metrics.cashBalance.toLocaleString()}
+                                    {currencySymbol}{metrics.cashBalance.toLocaleString()}
                                 </p>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                                 <p className="text-xs text-gray-400 uppercase tracking-wider">Net Realized P&L</p>
                                 <p className={`text-xl font-bold mt-1 ${metrics.netRealizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-                                    ₹{metrics.netRealizedPnL.toLocaleString()}
+                                    {currencySymbol}{metrics.netRealizedPnL.toLocaleString()}
                                 </p>
                             </div>
                         </div>
@@ -1412,11 +1412,11 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
                                 <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
                                     <td className="p-4 font-medium text-white group-hover:text-primary-glow transition-colors">{h.ticker}</td>
                                     <td className="p-4 text-gray-300 text-right">{h.qty}</td>
-                                    <td className="p-4 text-gray-300 text-right">₹{(h.invested / h.qty).toFixed(2)}</td>
-                                    <td className="p-4 text-gray-300 text-right">₹{h.invested.toLocaleString()}</td>
-                                    <td className="p-4 text-white font-medium text-right">₹{h.marketValue.toLocaleString()}</td>
+                                    <td className="p-4 text-gray-300 text-right">{currencySymbol}{(h.invested / h.qty).toFixed(2)}</td>
+                                    <td className="p-4 text-gray-300 text-right">{currencySymbol}{h.invested.toLocaleString()}</td>
+                                    <td className="p-4 text-white font-medium text-right">{currencySymbol}{h.marketValue.toLocaleString()}</td>
                                     <td className={`p-4 text-right font-bold ${h.unrealized >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        {h.unrealized >= 0 ? '+' : ''}₹{h.unrealized.toLocaleString()}
+                                        {h.unrealized >= 0 ? '+' : ''}{currencySymbol}{h.unrealized.toLocaleString()}
                                     </td>
                                     <td className={`p-4 text-right font-bold ${h.netReturnPct >= 0 ? 'text-success' : 'text-danger'}`}>
                                         {h.netReturnPct.toFixed(2)}%
@@ -1441,7 +1441,7 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
                                 Showing {filteredTrades.length} trades 
                                 {Math.abs(displayedPnL) > 0 && (
                                     <span className={`ml-2 font-bold ${displayedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        (Net P&L: {displayedPnL > 0 ? '+' : '-'}₹{Math.abs(displayedPnL).toLocaleString()})
+                                        (Net P&L: {displayedPnL > 0 ? '+' : '-'}{currencySymbol}{Math.abs(displayedPnL).toLocaleString()})
                                     </span>
                                 )}
                             </p>
@@ -1520,15 +1520,15 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right font-mono">{trade.quantity}</td>
-                                            <td className="px-6 py-4 text-right font-mono">₹{trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td className="px-6 py-4 text-right font-mono">{currencySymbol}{trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                             <td className={`px-6 py-4 text-right font-mono font-medium ${trade.netAmount > 0 ? 'text-success' : 'text-gray-400'}`}>
-                                                {trade.netAmount > 0 ? '+' : ''}₹{Math.abs(trade.netAmount).toLocaleString()}
+                                                {trade.netAmount > 0 ? '+' : ''}{currencySymbol}{Math.abs(trade.netAmount).toLocaleString()}
                                             </td>
                                             
                                             <td className="px-6 py-4 text-right font-mono font-bold">
                                                 {hasPerf ? (
                                                     <span className={`flex items-center justify-end gap-1 ${perf.realizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                        {perf.realizedPnL > 0 ? '+' : '-'}₹{Math.abs(perf.realizedPnL).toLocaleString()}
+                                                        {perf.realizedPnL > 0 ? '+' : '-'}{currencySymbol}{Math.abs(perf.realizedPnL).toLocaleString()}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-600">-</span>
@@ -1662,7 +1662,7 @@ const PortfolioDashboard = ({ context, currentView, setView }: { context: AssetC
                                         <tr key={item.id} className="hover:bg-white/5 transition-colors text-sm group">
                                             <td className="px-6 py-4 font-bold text-white">{item.ticker}</td>
                                             <td className="px-6 py-4 text-right font-mono text-gray-300">
-                                                {currentPrice > 0 ? `₹${currentPrice.toLocaleString()}` : <span className="text-gray-600">N/A</span>}
+                                                {currentPrice > 0 ? `${currencySymbol}${currentPrice.toLocaleString()}` : <span className="text-gray-600">N/A</span>}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <input 
