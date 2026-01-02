@@ -1282,9 +1282,11 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                  <button onClick={handleGoogleSheetFetch} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors" title="Sync Market Data">
                     <RefreshCw size={18} className={`text-primary-glow ${isFetchingSheet ? 'animate-spin' : ''}`} />
                  </button>
-                 <button onClick={clearAllData} className="p-2 bg-danger/10 hover:bg-danger/20 rounded-lg border border-danger/20 transition-colors text-danger" title="Clear Data">
-                    <Trash2 size={18} />
-                 </button>
+                 {currentView === ViewState.UPLOAD && (
+                    <button onClick={clearAllData} className="p-2 bg-danger/10 hover:bg-danger/20 rounded-lg border border-danger/20 transition-colors text-danger" title="Clear Data">
+                        <Trash2 size={18} />
+                    </button>
+                 )}
             </div>
         </div>
 
