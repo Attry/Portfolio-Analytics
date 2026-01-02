@@ -405,23 +405,36 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   };
 
   const clearAllData = () => {
-      if(confirm(`Are you sure you want to clear all imported data for ${context.replace(/_/g, ' ')}? This cannot be undone.`)) {
-          Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key as string));
-          setTrades([]);
-          setPnlData([]);
-          setLedgerData([]);
-          setDividendData([]);
-          setPriceData({});
-          setWatchlist([]);
-          setUploadMeta({});
-          setExtractedCharges(0);
-          setExtractedNetPnL(null);
-          setExtractedDividends(0);
-          setExtractedCash(0);
-          setMarketDate('');
-          if (context === 'INTERNATIONAL_EQUITY') setSheetId("1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY");
-          else setSheetId("1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI");
-          alert(`All data cleared for ${context.replace(/_/g, ' ')}.`);
+      if(window.confirm(`Are you sure you want to clear all imported data for ${context.replace(/_/g, ' ')}? This cannot be undone.`)) {
+          try {
+              // Remove keys from local storage
+              Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key as string));
+              
+              // Reset all component states
+              setTrades([]);
+              setPnlData([]);
+              setLedgerData([]);
+              setDividendData([]);
+              setPriceData({});
+              setWatchlist([]);
+              setUploadMeta({});
+              setExtractedCharges(0);
+              setExtractedNetPnL(null);
+              setExtractedDividends(0);
+              setExtractedCash(0);
+              setMarketDate('');
+              setLastUploadPreview([]);
+              setLastUploadHeaders([]);
+              
+              // Reset Sheet ID to defaults based on context
+              if (context === 'INTERNATIONAL_EQUITY') setSheetId("1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY");
+              else setSheetId("1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI");
+              
+              alert(`All data cleared for ${context.replace(/_/g, ' ')}.`);
+          } catch (error) {
+              console.error("Failed to clear data:", error);
+              alert("An error occurred while clearing data. Please try refreshing the page.");
+          }
       }
   };
 
@@ -1283,7 +1296,16 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                     <RefreshCw size={18} className={`text-primary-glow ${isFetchingSheet ? 'animate-spin' : ''}`} />
                  </button>
                  {currentView === ViewState.UPLOAD && (
-                    <button onClick={clearAllData} className="p-2 bg-danger/10 hover:bg-danger/20 rounded-lg border border-danger/20 transition-colors text-danger" title="Clear Data">
+                    <button 
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            clearAllData();
+                        }} 
+                        className="p-2 bg-danger/10 hover:bg-danger/20 rounded-lg border border-danger/20 transition-colors text-danger cursor-pointer z-50 relative" 
+                        title="Clear Data"
+                    >
                         <Trash2 size={18} />
                     </button>
                  )}
