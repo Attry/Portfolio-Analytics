@@ -1411,6 +1411,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Invested</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Current Value</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Position</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Holding Days</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">P&L</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">% Return</th>
                             </tr>
@@ -1424,6 +1425,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                     <td className="p-4 text-gray-300 text-right">{currencySymbol}{h.invested.toLocaleString()}</td>
                                     <td className="p-4 text-white font-medium text-right">{currencySymbol}{h.marketValue.toLocaleString()}</td>
                                     <td className="p-4 text-gray-300 text-right">{h.portfolioPct.toFixed(2)}%</td>
+                                    <td className="p-4 text-gray-300 text-right">{h.daysHeld} Days</td>
                                     <td className={`p-4 text-right font-bold ${h.unrealized >= 0 ? 'text-success' : 'text-danger'}`}>
                                         {h.unrealized >= 0 ? '+' : ''}{currencySymbol}{h.unrealized.toLocaleString()}
                                     </td>
