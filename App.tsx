@@ -1291,7 +1291,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         {/* --- DASHBOARD VIEW --- */}
         {currentView === ViewState.DASHBOARD && (
             <div className="space-y-6 animate-fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <StatsCard 
                         title="Current Value" 
                         value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
@@ -1315,6 +1315,11 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                         value={`${metrics.xirr.toFixed(2)}%`} 
                         icon={<Activity />} 
                         isPositive={metrics.xirr >= 0}
+                    />
+                    <StatsCard 
+                        title="Diversification" 
+                        value={`${metrics.holdings.length}`} 
+                        icon={<Scale />} 
                     />
                 </div>
 
@@ -1405,6 +1410,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Avg Price</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Invested</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Current Value</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Position</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">P&L</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">% Return</th>
                             </tr>
@@ -1417,6 +1423,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                     <td className="p-4 text-gray-300 text-right">{currencySymbol}{(h.invested / h.qty).toFixed(2)}</td>
                                     <td className="p-4 text-gray-300 text-right">{currencySymbol}{h.invested.toLocaleString()}</td>
                                     <td className="p-4 text-white font-medium text-right">{currencySymbol}{h.marketValue.toLocaleString()}</td>
+                                    <td className="p-4 text-gray-300 text-right">{h.portfolioPct.toFixed(2)}%</td>
                                     <td className={`p-4 text-right font-bold ${h.unrealized >= 0 ? 'text-success' : 'text-danger'}`}>
                                         {h.unrealized >= 0 ? '+' : ''}{currencySymbol}{h.unrealized.toLocaleString()}
                                     </td>
