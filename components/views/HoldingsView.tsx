@@ -38,17 +38,17 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                                 </td>
                                 <td className="px-6 py-4 text-gray-300 text-right font-mono">{isCash ? '-' : h.qty}</td>
                                 <td className="px-6 py-4 text-gray-300 text-right font-mono">{isCash ? '-' : `${currencySymbol}${(h.invested / h.qty).toFixed(2)}`}</td>
-                                <td className="px-6 py-4 text-gray-300 text-right font-mono">{currencySymbol}{h.invested.toLocaleString()}</td>
-                                <td className="px-6 py-4 text-white font-medium text-right font-mono">{currencySymbol}{h.marketValue.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-gray-300 text-right font-mono">{currencySymbol}{h.invested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                                <td className="px-6 py-4 text-white font-medium text-right font-mono">{currencySymbol}{h.marketValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
                                 <td className="px-6 py-4 text-gray-300 text-right font-mono">{h.portfolioPct.toFixed(2)}%</td>
                                 <td className="px-6 py-4 text-gray-300 text-right font-mono">{isCash ? '-' : `${h.daysHeld} Days`}</td>
                                 <td className={`px-6 py-4 text-right font-mono font-bold ${h.realized >= 0 ? 'text-success' : 'text-danger'}`}>
-                                    {isCash ? '-' : `${h.realized >= 0 ? '+' : ''}${currencySymbol}${h.realized.toLocaleString()}`}
+                                    {isCash ? '-' : `${h.realized >= 0 ? '+' : '-'}${currencySymbol}${Math.abs(h.realized).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                                 </td>
                                 <td className={`px-6 py-4 text-right font-mono font-bold ${h.unrealized >= 0 ? 'text-success' : 'text-danger'}`}>
                                     {isCash ? '-' : (
                                         <span>
-                                            {h.unrealized >= 0 ? '+' : ''}{currencySymbol}{h.unrealized.toLocaleString()} 
+                                            {h.unrealized >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(h.unrealized).toLocaleString('en-IN', { maximumFractionDigits: 0 })} 
                                             <span className="ml-1 text-xs opacity-80">
                                                 ({h.netReturnPct >= 0 ? '+' : ''}{h.netReturnPct.toFixed(2)}%)
                                             </span>

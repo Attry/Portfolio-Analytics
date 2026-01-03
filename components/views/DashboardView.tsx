@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Wallet, Briefcase, TrendingUp, Activity, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
+import { Wallet, Briefcase, TrendingUp, Activity, PieChart as PieChartIcon, BarChart3, Layers } from 'lucide-react';
 import { StatsCard } from '../StatsCard';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -25,9 +25,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
         return [];
     }, [metrics.holdings]);
 
+    const diversificationCount = useMemo(() => {
+        return metrics.holdings.filter((h: any) => h.ticker !== 'CASH BALANCE').length;
+    }, [metrics.holdings]);
+
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <StatsCard 
                     title="Current Value" 
                     value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
@@ -47,11 +51,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                     icon={<TrendingUp />} 
                     isPositive={metrics.unrealizedPnL >= 0}
                 />
-                    <StatsCard 
+                 <StatsCard 
                     title="XIRR" 
                     value={`${metrics.xirr.toFixed(2)}%`} 
                     icon={<Activity />} 
                     isPositive={metrics.xirr >= 0}
+                />
+                <StatsCard 
+                    title="Diversification" 
+                    value={`${diversificationCount}`} 
+                    icon={<Layers />} 
+                    changeLabel="Stocks"
                 />
             </div>
 
