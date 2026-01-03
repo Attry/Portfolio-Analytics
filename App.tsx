@@ -71,11 +71,10 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   const currencySymbol = context === 'INTERNATIONAL_EQUITY' ? '€' : '₹';
   
   const {
-      trades, metrics, watchlist, priceData, uploadMeta, sheetId, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL,
-      processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId
+      trades, metrics, watchlist, priceData, uploadMeta, sheetId, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL, globalMarketDate,
+      processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate
   } = usePortfolioData(context);
 
-  const [marketDate, setMarketDate] = useState<string>(uploadMeta.marketDate || '');
   const [isFetchingSheet, setIsFetchingSheet] = useState(false);
 
   // -- Google Sheet Sync --
@@ -88,7 +87,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         } else if (context === 'GOLD_ETF') {
              url = GOLD_ETF_SHEET_URL;
         } else {
-            if (!sheetId || !marketDate) { alert("Please provide both Sheet ID and Date."); setIsFetchingSheet(false); return; }
+            if (!sheetId || !globalMarketDate) { alert("Please provide both Sheet ID and Market Date."); setIsFetchingSheet(false); return; }
             url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
         }
 
@@ -98,8 +97,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         if (csvText.toLowerCase().includes('<!doctype html>')) throw new Error("Access denied. Publish sheet to web.");
         
         // Use the hook's processor
-        // For MF and Gold, marketDate isn't strictly needed for parsing but we pass it for meta
-        processFile(csvText, 'MARKET_DATA', marketDate || new Date().toISOString().split('T')[0]);
+        processFile(csvText, 'MARKET_DATA', globalMarketDate);
     } catch (error: any) {
         console.error(error);
         alert(`Failed to fetch data: ${error.message}`);
@@ -111,7 +109,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   // Auto-sync effect
   useEffect(() => {
     const timer = setTimeout(() => {
-        if (context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF' || (sheetId && marketDate && Object.keys(priceData).length === 0)) {
+        if (context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF' || (sheetId && globalMarketDate && Object.keys(priceData).length === 0)) {
              handleGoogleSheetFetch();
         }
     }, 5000);
@@ -121,15 +119,15 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: any) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (type === 'MARKET_DATA' && !marketDate && context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF') {
-        alert("Please select the Date of Market Data before uploading.");
+    if (type === 'MARKET_DATA' && !globalMarketDate && context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF') {
+        alert("Please set the Reference Date in the header before uploading.");
         event.target.value = '';
         return;
     }
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
-      if (content) processFile(content, type, marketDate);
+      if (content) processFile(content, type, globalMarketDate);
     };
     reader.readAsText(file);
     event.target.value = '';
@@ -144,7 +142,20 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                 <p className="text-gray-400 text-sm mt-1">Overview of your investment portfolio</p>
             </div>
             <div className="flex items-center gap-3">
-                 <div className="text-right">
+                 <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-1.5 px-3 gap-2">
+                     <Calendar className="w-4 h-4 text-primary-glow" />
+                     <div className="flex flex-col">
+                        <span className="text-[10px] uppercase text-gray-500 font-bold leading-none">Reference Date</span>
+                        <input 
+                            type="date"
+                            value={globalMarketDate}
+                            onChange={(e) => updateGlobalDate(e.target.value)}
+                            className="bg-transparent text-white text-xs font-bold outline-none border-none p-0 cursor-pointer w-24"
+                        />
+                     </div>
+                 </div>
+
+                 <div className="text-right ml-2">
                     <p className="text-xs text-gray-500">Market Data</p>
                     <p className={`text-xs font-bold ${metrics.hasLiveData ? 'text-success' : 'text-warning'}`}>
                         {metrics.hasLiveData ? 'LIVE' : 'OFFLINE'}
@@ -177,8 +188,8 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
             <UploadView 
                 context={context} 
                 uploadMeta={uploadMeta} 
-                marketDate={marketDate} 
-                setMarketDate={(d) => { setMarketDate(d); updateMeta({ marketDate: d }); }}
+                marketDate={globalMarketDate} 
+                setMarketDate={updateGlobalDate}
                 sheetId={sheetId}
                 setSheetId={saveSheetId}
                 onFileUpload={handleFileUpload}

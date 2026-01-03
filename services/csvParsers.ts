@@ -1,3 +1,4 @@
+
 import { Trade, TradeType, PnLRecord, LedgerRecord, DividendRecord } from '../types';
 import { clean, normalizeHeader, parseNum, parseIndianDate } from '../utils/common';
 
@@ -125,6 +126,7 @@ export const parseMutualFundCSV = (content: string): ParseResult<any[]> => {
         const headers = rawRows[headerIdx];
         const rows = rawRows.slice(headerIdx + 1);
         
+        const idxDate = getColIndex(headers, ['Date', 'SIP Date', 'Investment Date']);
         const idxFund = getColIndex(headers, ['Fund', 'Scheme Name', 'Description']);
         const idxNAV = getColIndex(headers, ['NAV']); // This is usually Avg Cost NAV or Purchase NAV in this context
         const idxQty = getColIndex(headers, ['Qty', 'Units']);
@@ -136,6 +138,7 @@ export const parseMutualFundCSV = (content: string): ParseResult<any[]> => {
             const fund = clean(row[idxFund] || '');
             if (!fund) return null;
             
+            const dateStr = idxDate !== -1 ? parseIndianDate(clean(row[idxDate] || '')) : null;
             const qty = Math.abs(parseNum(row[idxQty] || ''));
             const invested = Math.abs(parseNum(row[idxValue] || ''));
             const marketValue = Math.abs(parseNum(row[idxCurVal] || ''));
@@ -154,7 +157,8 @@ export const parseMutualFundCSV = (content: string): ParseResult<any[]> => {
                 marketPrice,
                 marketValue,
                 unrealized: marketValue - invested,
-                realized: 0 // Snapshot does not provide realized P&L
+                realized: 0,
+                latestBuyDate: dateStr
             };
         }).filter(h => h !== null);
         
@@ -179,6 +183,7 @@ export const parseGoldETFCSV = (content: string): ParseResult<any[]> => {
         const headers = rawRows[headerIdx];
         const rows = rawRows.slice(headerIdx + 1);
         
+        const idxDate = getColIndex(headers, ['Date', 'Investment Date']);
         const idxFund = getColIndex(headers, ['Fund', 'Scheme Name', 'ETF Name']);
         const idxAvgPrice = getColIndex(headers, ['Avg Price', 'Price']);
         const idxQty = getColIndex(headers, ['Qty', 'Units', 'Quantity']);
@@ -190,6 +195,7 @@ export const parseGoldETFCSV = (content: string): ParseResult<any[]> => {
             const fund = clean(row[idxFund] || '');
             if (!fund) return null;
             
+            const dateStr = idxDate !== -1 ? parseIndianDate(clean(row[idxDate] || '')) : null;
             const qty = Math.abs(parseNum(row[idxQty] || ''));
             const invested = Math.abs(parseNum(row[idxValue] || ''));
             const marketValue = Math.abs(parseNum(row[idxCurVal] || ''));
@@ -208,7 +214,8 @@ export const parseGoldETFCSV = (content: string): ParseResult<any[]> => {
                 marketPrice,
                 marketValue,
                 unrealized: marketValue - invested,
-                realized: 0
+                realized: 0,
+                latestBuyDate: dateStr
             };
         }).filter(h => h !== null);
         
@@ -261,6 +268,7 @@ export const parseIndianEquity = (type: string, rawRows: string[][]): ParseResul
          if (newTrades.length > 0) return { success: true, data: newTrades, headers, message: `Imported ${newTrades.length} trades.` };
          return { success: false, message: "No valid trades found." };
     }
+    // ... rest of parseIndianEquity
     else if (type === 'PNL') {
          const totalCharges = findValueInFooter(rawRows, ['Total Charges', 'Charges']);
          const reportedNet = findValueInFooter(rawRows, ['Net P&L', 'Net Realised P&L']);
@@ -380,7 +388,9 @@ export const parseIndianEquity = (type: string, rawRows: string[][]): ParseResul
     return { success: false, message: "Unknown upload type." };
 };
 
+// ... existing parseInternationalEquity
 export const parseInternationalEquity = (type: string, rawRows: string[][]): ParseResult<any> => {
+     // (existing content of parseInternationalEquity from previous response or file)
     if (type === 'TRADE_HISTORY') {
           const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Produit', 'Quantité']);
           if (headerIdx === -1) return { success: false, message: "Could not find Degiro transactions header. Expecting 'Date', 'Produit' and 'Quantité'." };
@@ -421,7 +431,6 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
               const price = Math.abs(parseNum(row[idxPrice] || ''));
               const tradeType = qtyRaw > 0 ? TradeType.BUY : TradeType.SELL;
               
-              // Accumulate Charges
               const autoFXFee = idxAutoFX !== -1 ? Math.abs(parseNum(row[idxAutoFX] || '')) : 0;
               const brokerageFee = idxBrokerage !== -1 ? Math.abs(parseNum(row[idxBrokerage] || '')) : 0;
               totalFeesAccumulated += (autoFXFee + brokerageFee);

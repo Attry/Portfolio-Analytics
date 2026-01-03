@@ -62,7 +62,7 @@ export const UploadView: React.FC<UploadViewProps> = ({
                     {type.id === 'MARKET_DATA' && (
                         <div className="space-y-3 mb-4 bg-black/20 p-3 rounded-xl border border-white/5">
                             <div>
-                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1 block">Data Date</label>
+                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1 block">Reference Date (Global)</label>
                                 <input 
                                     type="date" 
                                     value={marketDate}
@@ -81,7 +81,7 @@ export const UploadView: React.FC<UploadViewProps> = ({
                                         className="flex-1 bg-black/40 border border-white/10 rounded-lg p-2 text-white text-xs font-mono focus:outline-none focus:border-primary/50 transition-colors"
                                     />
                                     <button 
-                                        onClick={() => { setMarketDate(''); setSheetId(''); }}
+                                        onClick={() => { setSheetId(''); }}
                                         className="px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
                                         title="Reset Fields"
                                     >

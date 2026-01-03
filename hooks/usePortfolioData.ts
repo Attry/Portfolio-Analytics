@@ -60,6 +60,10 @@ export const usePortfolioData = (context: AssetContext) => {
     // Gold Specific State
     const [goldHoldings, setGoldHoldings] = useState<any[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.GOLD_HOLDINGS) || '[]'));
     
+    // Global Market Date (shared preference but handled here for convenience, or unique per context if desired, prompt implies global)
+    // Using a shared key for the "Reference Date"
+    const [globalMarketDate, setGlobalMarketDate] = useState(() => localStorage.getItem('GLOBAL_MARKET_DATE') || new Date().toISOString().split('T')[0]);
+
     const [summary, setSummary] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.SUMMARY) || '{}'));
     const [sheetId, setSheetId] = useState<string>(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.SHEET_ID);
@@ -94,6 +98,13 @@ export const usePortfolioData = (context: AssetContext) => {
     const saveSheetId = (id: string) => {
         setSheetId(id);
         persist(STORAGE_KEYS.SHEET_ID, id);
+    }
+
+    const updateGlobalDate = (date: string) => {
+        setGlobalMarketDate(date);
+        localStorage.setItem('GLOBAL_MARKET_DATE', date);
+        // Also update local meta to keep sync for Market Data Uploads
+        updateMeta({ marketDate: date });
     }
 
     // -- Actions --
@@ -191,6 +202,8 @@ export const usePortfolioData = (context: AssetContext) => {
 
     // -- Metrics Calculation --
     const metrics = useMemo(() => {
+        const referenceDate = new Date(globalMarketDate || new Date());
+
         if (context === 'MUTUAL_FUNDS') {
              const totalInvested = mfHoldings.reduce((acc, h) => acc + h.invested, 0);
              const currentValue = mfHoldings.reduce((acc, h) => acc + h.marketValue, 0);
@@ -202,14 +215,26 @@ export const usePortfolioData = (context: AssetContext) => {
              const cashBalance = 0;
              const xirr = 0; 
 
-             const finalHoldings = mfHoldings.map(h => ({
-                 ...h,
-                 unrealized: h.marketValue - h.invested,
-                 netReturnPct: h.invested > 0 ? ((h.marketValue - h.invested) / h.invested) * 100 : 0,
-                 portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0,
-                 daysHeld: 0,
-                 realized: 0
-             })).sort((a, b) => b.portfolioPct - a.portfolioPct);
+             const finalHoldings = mfHoldings.map(h => {
+                 let daysHeld = 0;
+                 if (h.latestBuyDate) {
+                     // Difference in milliseconds
+                     const diff = referenceDate.getTime() - new Date(h.latestBuyDate).getTime();
+                     // Convert to days
+                     daysHeld = Math.floor(diff / (1000 * 3600 * 24));
+                     // Prevent negative hold days if reference date is before buy date (user error on date select)
+                     if (daysHeld < 0) daysHeld = 0;
+                 }
+                 
+                 return {
+                    ...h,
+                    unrealized: h.marketValue - h.invested,
+                    netReturnPct: h.invested > 0 ? ((h.marketValue - h.invested) / h.invested) * 100 : 0,
+                    portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0,
+                    daysHeld,
+                    realized: 0
+                 };
+             }).sort((a, b) => b.portfolioPct - a.portfolioPct);
 
              return {
                  totalInvested, currentValue, unrealizedPnL, grossRealizedPnL, netRealizedPnL,
@@ -231,14 +256,23 @@ export const usePortfolioData = (context: AssetContext) => {
             const cashBalance = 0;
             const xirr = 0; 
 
-            const finalHoldings = goldHoldings.map(h => ({
-                ...h,
-                unrealized: h.marketValue - h.invested,
-                netReturnPct: h.invested > 0 ? ((h.marketValue - h.invested) / h.invested) * 100 : 0,
-                portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0,
-                daysHeld: 0,
-                realized: 0
-            })).sort((a, b) => b.portfolioPct - a.portfolioPct);
+            const finalHoldings = goldHoldings.map(h => {
+                let daysHeld = 0;
+                if (h.latestBuyDate) {
+                    const diff = referenceDate.getTime() - new Date(h.latestBuyDate).getTime();
+                    daysHeld = Math.floor(diff / (1000 * 3600 * 24));
+                    if (daysHeld < 0) daysHeld = 0;
+                }
+
+                return {
+                    ...h,
+                    unrealized: h.marketValue - h.invested,
+                    netReturnPct: h.invested > 0 ? ((h.marketValue - h.invested) / h.invested) * 100 : 0,
+                    portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0,
+                    daysHeld,
+                    realized: 0
+                };
+            }).sort((a, b) => b.portfolioPct - a.portfolioPct);
 
             return {
                 totalInvested, currentValue, unrealizedPnL, grossRealizedPnL, netRealizedPnL,
@@ -293,7 +327,7 @@ export const usePortfolioData = (context: AssetContext) => {
               const netReturnPct = data.invested > 0 ? (unrealized / data.invested) * 100 : 0;
               let daysHeld = 0;
               if (data.latestBuyDate) {
-                  const diffTime = Math.abs(new Date().getTime() - new Date(data.latestBuyDate).getTime());
+                  const diffTime = Math.abs(referenceDate.getTime() - new Date(data.latestBuyDate).getTime());
                   daysHeld = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
               }
 
@@ -335,11 +369,11 @@ export const usePortfolioData = (context: AssetContext) => {
             hasLiveData: Object.keys(priceData).length > 0,
             tradePerformance
         };
-    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings, goldHoldings]);
+    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings, goldHoldings, globalMarketDate]);
 
     return {
         trades, pnlData, ledgerData, dividendData, priceData, watchlist, uploadMeta, sheetId,
-        metrics, lastUploadPreview, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL,
-        processFile, clearAllData, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId
+        metrics, lastUploadPreview, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL, globalMarketDate,
+        processFile, clearAllData, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate
     };
 };
