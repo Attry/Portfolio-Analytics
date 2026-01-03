@@ -267,9 +267,12 @@ export const usePortfolioData = (context: AssetContext) => {
              const finalHoldings = mfHoldings.map(h => {
                  let daysHeld = 0;
                  if (h.latestBuyDate) {
-                     const diff = referenceDate.getTime() - new Date(h.latestBuyDate).getTime();
-                     daysHeld = Math.floor(diff / (1000 * 3600 * 24));
-                     if (daysHeld < 0) daysHeld = 0;
+                     const buyDate = new Date(h.latestBuyDate);
+                     if (!isNaN(buyDate.getTime())) {
+                        const diff = referenceDate.getTime() - buyDate.getTime();
+                        daysHeld = Math.floor(diff / (1000 * 3600 * 24));
+                        if (daysHeld < 0) daysHeld = 0;
+                     }
                  }
                  
                  return {
@@ -277,7 +280,7 @@ export const usePortfolioData = (context: AssetContext) => {
                     unrealized: h.marketValue - h.invested,
                     netReturnPct: h.invested > 0 ? ((h.marketValue - h.invested) / h.invested) * 100 : 0,
                     portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0,
-                    daysHeld,
+                    daysHeld: isNaN(daysHeld) ? 0 : daysHeld,
                     realized: 0
                  };
              }).sort((a, b) => b.portfolioPct - a.portfolioPct);
@@ -305,9 +308,12 @@ export const usePortfolioData = (context: AssetContext) => {
             const finalHoldings = goldHoldings.map(h => {
                 let daysHeld = 0;
                 if (h.latestBuyDate) {
-                    const diff = referenceDate.getTime() - new Date(h.latestBuyDate).getTime();
-                    daysHeld = Math.floor(diff / (1000 * 3600 * 24));
-                    if (daysHeld < 0) daysHeld = 0;
+                    const buyDate = new Date(h.latestBuyDate);
+                    if (!isNaN(buyDate.getTime())) {
+                        const diff = referenceDate.getTime() - buyDate.getTime();
+                        daysHeld = Math.floor(diff / (1000 * 3600 * 24));
+                        if (daysHeld < 0) daysHeld = 0;
+                    }
                 }
 
                 return {
@@ -315,7 +321,7 @@ export const usePortfolioData = (context: AssetContext) => {
                     unrealized: h.marketValue - h.invested,
                     netReturnPct: h.invested > 0 ? ((h.marketValue - h.invested) / h.invested) * 100 : 0,
                     portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0,
-                    daysHeld,
+                    daysHeld: isNaN(daysHeld) ? 0 : daysHeld,
                     realized: 0
                 };
             }).sort((a, b) => b.portfolioPct - a.portfolioPct);
@@ -379,7 +385,7 @@ export const usePortfolioData = (context: AssetContext) => {
 
               return {
                   ticker, qty: data.qty, invested: data.invested, unrealized, realized: data.realizedPnL,
-                  netReturnPct, marketValue, daysHeld, isLive, portfolioPct: 0
+                  netReturnPct, marketValue, daysHeld: isNaN(daysHeld) ? 0 : daysHeld, isLive, portfolioPct: 0
               };
           });
 

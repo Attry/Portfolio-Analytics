@@ -141,14 +141,6 @@ export const NetWorthView: React.FC = () => {
                                 />
                             </PieChart>
                         </ResponsiveContainer>
-                        
-                        {/* Center Text */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="text-center">
-                                <p className="text-gray-500 text-xs uppercase font-bold">Total</p>
-                                <p className="text-white font-bold text-lg">100%</p>
-                            </div>
-                        </div>
                     </div>
                  </div>
 
