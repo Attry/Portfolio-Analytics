@@ -215,10 +215,14 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(ViewState.DASHBOARD);
   const [context, setContext] = useState<AssetContext>('INDIAN_EQUITY');
 
+  // Check if current view triggers sidebar auto-hide
+  const autoHideViews = [ViewState.HOLDINGS, ViewState.WATCHLIST, ViewState.TRANSACTIONS, ViewState.AI_INSIGHTS];
+  const isAutoHide = autoHideViews.includes(view);
+
   return (
     <div className="flex h-screen bg-[#0f111a] text-white font-sans selection:bg-primary/30">
         <Sidebar currentView={view} setView={setView} currentContext={context} setContext={setContext} />
-        <main className="flex-1 ml-64 relative">
+        <main className={`flex-1 relative transition-all duration-500 ease-in-out ${isAutoHide ? 'ml-6' : 'ml-64'}`}>
             <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
                 <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px]"></div>
                 <div className="absolute bottom-[-10%] left-[20%] w-[400px] h-[400px] bg-accent-cyan/5 rounded-full blur-[100px]"></div>

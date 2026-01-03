@@ -73,10 +73,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
   const currentAssetItem = allAssets.find(a => a.context === currentContext) || allAssets[0];
   const otherAssets = allAssets.filter(a => a.context !== currentContext);
 
+  // Auto-hide logic
+  const autoHideViews = [ViewState.HOLDINGS, ViewState.WATCHLIST, ViewState.TRANSACTIONS, ViewState.AI_INSIGHTS];
+  const isAutoHide = autoHideViews.includes(currentView);
+
   return (
-    <aside className="w-64 glass-panel border-r border-border flex flex-col h-screen fixed left-0 top-0 z-50">
+    <aside 
+        className={`w-64 glass-panel border-r border-border flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-500 ease-in-out group/sidebar
+            ${isAutoHide ? '-translate-x-[calc(100%-20px)] hover:translate-x-0 shadow-2xl hover:shadow-[0_0_40px_rgba(112,66,248,0.2)]' : 'translate-x-0'}
+        `}
+    >
       {/* Glow Effect Top Left */}
       <div className="absolute top-0 left-0 w-32 h-32 bg-primary/20 rounded-full blur-[50px] pointer-events-none"></div>
+
+      {/* Autohide Handle Visual */}
+      {isAutoHide && (
+        <div className="absolute right-0 top-0 bottom-0 w-[20px] flex items-center justify-center cursor-e-resize opacity-100 group-hover/sidebar:opacity-0 transition-opacity duration-300">
+             <div className="h-24 w-1 bg-primary/40 rounded-full shadow-[0_0_10px_rgba(112,66,248,0.5)]"></div>
+        </div>
+      )}
 
       {/* TradeView Button -> Navigates to Net Worth Overview */}
       <div className="p-6 border-b border-white/5 relative z-10">
