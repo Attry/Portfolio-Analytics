@@ -66,6 +66,7 @@ import { TransactionsView } from './components/views/TransactionsView';
 import { WatchlistView } from './components/views/WatchlistView';
 import { AIInsightsView } from './components/views/AIInsightsView';
 import { UploadView } from './components/views/UploadView';
+import { NetWorthView } from './components/views/NetWorthView';
 
 const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewState, setView: (view: ViewState) => void }> = ({ context, currentView, setView }) => {
   const currencySymbol = context === 'INTERNATIONAL_EQUITY' ? '€' : '₹';
@@ -133,6 +134,14 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
     reader.readAsText(file);
     event.target.value = '';
   };
+
+  if (currentView === ViewState.NET_WORTH) {
+      return (
+          <div className="p-6 h-full overflow-y-auto">
+              <NetWorthView />
+          </div>
+      );
+  }
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto h-full pb-24">

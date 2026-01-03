@@ -31,13 +31,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
   });
 
   const renderAssetButton = (label: string, context: AssetContext) => {
-      const isActive = currentContext === context;
+      const isActive = currentContext === context && currentView !== ViewState.NET_WORTH;
       return (
         <button 
             onClick={() => {
                 setContext(context);
                 // Reset to Dashboard if current view is not available in new context
-                if ((context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF' || context === 'CASH_EQUIVALENTS') && ![ViewState.DASHBOARD, ViewState.HOLDINGS].includes(currentView)) {
+                if (currentView === ViewState.NET_WORTH) {
+                    setView(ViewState.DASHBOARD);
+                }
+                else if ((context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF' || context === 'CASH_EQUIVALENTS') && ![ViewState.DASHBOARD, ViewState.HOLDINGS].includes(currentView)) {
                     setView(ViewState.DASHBOARD);
                 }
             }}
@@ -61,38 +64,53 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
       {/* Glow Effect Top Left */}
       <div className="absolute top-0 left-0 w-32 h-32 bg-primary/20 rounded-full blur-[50px] pointer-events-none"></div>
 
-      <div className="p-6 border-b border-white/5 flex items-center gap-3 relative z-10">
-        <div className="bg-gradient-to-tr from-primary to-accent-cyan p-2.5 rounded-xl shadow-[0_0_15px_rgba(112,66,248,0.4)]">
-            <WalletCards className="text-white w-5 h-5" />
-        </div>
-        <span className="text-xl font-bold text-white tracking-wide font-sans">
-          Trade<span className="text-primary-glow">View</span>
-        </span>
+      {/* TradeView Button -> Navigates to Net Worth Overview */}
+      <div className="p-6 border-b border-white/5 relative z-10">
+          <button 
+            onClick={() => setView(ViewState.NET_WORTH)}
+            className="flex items-center gap-3 w-full group hover:bg-white/5 p-2 -ml-2 rounded-xl transition-all"
+          >
+            <div className="bg-gradient-to-tr from-primary to-accent-cyan p-2.5 rounded-xl shadow-[0_0_15px_rgba(112,66,248,0.4)] group-hover:shadow-[0_0_20px_rgba(112,66,248,0.6)] transition-all">
+                <WalletCards className="text-white w-5 h-5" />
+            </div>
+            <div className="text-left">
+                <span className="text-xl font-bold text-white tracking-wide font-sans block leading-none">
+                Trade<span className="text-primary-glow">View</span>
+                </span>
+                <span className="text-[10px] text-accent-cyan uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                    Net Worth Overview
+                </span>
+            </div>
+          </button>
       </div>
       
-      <nav className="flex-1 p-4 space-y-2 relative z-10">
-        {filteredMenuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setView(item.id)}
-            className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group ${
-              currentView === item.id
-                ? 'bg-primary/10 text-white border border-primary/30 shadow-[0_0_10px_rgba(112,66,248,0.2)]'
-                : 'text-gray-400 hover:bg-white/5 hover:text-white'
-            }`}
-          >
-            <span className={`transition-colors duration-300 ${currentView === item.id ? 'text-accent-cyan' : 'text-gray-500 group-hover:text-white'}`}>
-                {item.icon}
-            </span>
-            <span className="font-medium tracking-wide text-sm">{item.label}</span>
-            {currentView === item.id && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-accent-cyan shadow-[0_0_5px_#00e5ff]"></div>
-            )}
-          </button>
-        ))}
-      </nav>
+      {/* Standard Menu */}
+      {currentView !== ViewState.NET_WORTH && (
+          <nav className="flex-1 p-4 space-y-2 relative z-10 animate-fade-in">
+            {filteredMenuItems.map((item) => (
+            <button
+                key={item.id}
+                onClick={() => setView(item.id)}
+                className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group ${
+                currentView === item.id
+                    ? 'bg-primary/10 text-white border border-primary/30 shadow-[0_0_10px_rgba(112,66,248,0.2)]'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                }`}
+            >
+                <span className={`transition-colors duration-300 ${currentView === item.id ? 'text-accent-cyan' : 'text-gray-500 group-hover:text-white'}`}>
+                    {item.icon}
+                </span>
+                <span className="font-medium tracking-wide text-sm">{item.label}</span>
+                {currentView === item.id && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-accent-cyan shadow-[0_0_5px_#00e5ff]"></div>
+                )}
+            </button>
+            ))}
+        </nav>
+      )}
 
-      <div className="p-4 border-t border-white/5 relative z-10">
+      {/* Asset Context Switcher */}
+      <div className={`p-4 ${currentView !== ViewState.NET_WORTH ? 'border-t' : 'mt-auto'} border-white/5 relative z-10`}>
         <div className="bg-gradient-to-br from-white/5 to-transparent rounded-xl p-4 border border-white/5">
             
             <div className="space-y-4">
