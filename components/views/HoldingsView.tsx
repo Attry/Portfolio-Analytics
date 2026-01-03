@@ -10,7 +10,7 @@ interface HoldingsViewProps {
 }
 
 export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySymbol, context }) => {
-    const showRealized = context !== 'MUTUAL_FUNDS';
+    const showRealized = context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF';
 
     return (
         <div className="glass-card rounded-2xl overflow-hidden animate-fade-in flex flex-col h-full">
@@ -18,9 +18,9 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-white/5 text-gray-400 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 backdrop-blur-xl">
                         <tr>
-                            <th className="px-6 py-4">{context === 'MUTUAL_FUNDS' ? 'Fund' : 'Stock'}</th>
+                            <th className="px-6 py-4">{(context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF') ? 'Fund' : 'Stock'}</th>
                             <th className="px-6 py-4 text-right">Qty</th>
-                            <th className="px-6 py-4 text-right">{context === 'MUTUAL_FUNDS' ? 'NAV' : 'Avg Price'}</th>
+                            <th className="px-6 py-4 text-right">{(context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF') ? 'Avg Price' : 'Avg Price'}</th>
                             <th className="px-6 py-4 text-right">Invested</th>
                             <th className="px-6 py-4 text-right">Current Value</th>
                             <th className="px-6 py-4 text-right">Position</th>

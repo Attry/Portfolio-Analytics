@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { AssetContext, Trade, PnLRecord, LedgerRecord, DividendRecord, WatchlistItem, ViewState } from '../types';
 import { calculateFIFO, calculateXIRR, PerStockData } from '../utils/financials';
-import { parseMarketDataCSV, parseIndianEquity, parseInternationalEquity, parseMutualFundCSV, ParseResult } from '../services/csvParsers';
+import { parseMarketDataCSV, parseIndianEquity, parseInternationalEquity, parseMutualFundCSV, parseGoldETFCSV, ParseResult } from '../services/csvParsers';
 
 type UploadType = 'PNL' | 'LEDGER' | 'DIVIDEND' | 'TRADE_HISTORY' | 'MARKET_DATA' | 'PORTFOLIO_SNAPSHOT';
 
@@ -33,12 +33,15 @@ const getStorageKeys = (context: AssetContext) => {
         META: `${prefix}_meta`,
         SUMMARY: `${prefix}_summary`,
         SHEET_ID: `${prefix}_sheet_id`,
-        MF_HOLDINGS: `${prefix}_holdings` // Specific for MF snapshots
+        MF_HOLDINGS: `${prefix}_holdings`, 
+        GOLD_HOLDINGS: `${prefix}_holdings` // Reuse suffix but unique prefix
     };
 };
 
 // Explicit URL for Mutual Funds as provided
 const MUTUAL_FUND_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXbYB5_8MwjNl-J6vYg7_vxhr2ks3F46pXZbzZBLz7nuCCvxP24nLYZicQzxo5ej00hxIIw7Eduh1n/pub?gid=0&single=true&output=csv";
+// Explicit URL for Gold ETF
+const GOLD_ETF_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyY8J5hELCaeUrMKMLOd2rU_tbdPUiR_dUG3llLRa2YKoP41cMyKkaQAzXBoE1IvCBpUuAa2Ld0Hri/pub?gid=0&single=true&output=csv";
 
 export const usePortfolioData = (context: AssetContext) => {
     const STORAGE_KEYS = useMemo(() => getStorageKeys(context), [context]);
@@ -54,6 +57,8 @@ export const usePortfolioData = (context: AssetContext) => {
     
     // MF Specific State
     const [mfHoldings, setMfHoldings] = useState<any[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.MF_HOLDINGS) || '[]'));
+    // Gold Specific State
+    const [goldHoldings, setGoldHoldings] = useState<any[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.GOLD_HOLDINGS) || '[]'));
     
     const [summary, setSummary] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.SUMMARY) || '{}'));
     const [sheetId, setSheetId] = useState<string>(() => {
@@ -62,7 +67,8 @@ export const usePortfolioData = (context: AssetContext) => {
              try { return JSON.parse(saved); } catch(e) { return saved; }
         }
         if (context === 'INTERNATIONAL_EQUITY') return "1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY";
-        if (context === 'MUTUAL_FUNDS') return "LINKED_TO_PUB_URL"; 
+        if (context === 'MUTUAL_FUNDS') return "LINKED_TO_PUB_URL_MF"; 
+        if (context === 'GOLD_ETF') return "LINKED_TO_PUB_URL_GOLD";
         return "1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI";
     });
 
@@ -94,7 +100,7 @@ export const usePortfolioData = (context: AssetContext) => {
     const clearAllData = () => {
         if (!confirm(`Clear all data for ${context}?`)) return;
         Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
-        setTrades([]); setPnlData([]); setLedgerData([]); setDividendData([]); setPriceData({}); setWatchlist([]); setUploadMeta({}); setSummary({}); setMfHoldings([]);
+        setTrades([]); setPnlData([]); setLedgerData([]); setDividendData([]); setPriceData({}); setWatchlist([]); setUploadMeta({}); setSummary({}); setMfHoldings([]); setGoldHoldings([]);
         alert('Data cleared.');
     };
 
@@ -122,13 +128,19 @@ export const usePortfolioData = (context: AssetContext) => {
         let result: ParseResult<any> = { success: false, message: "No parser matched." };
 
         if (context === 'MUTUAL_FUNDS') {
-             // For MF, "MARKET_DATA" is effectively the Portfolio Snapshot ingestion
              result = parseMutualFundCSV(content);
              if (result.success && result.data) {
                  setMfHoldings(result.data);
                  persist(STORAGE_KEYS.MF_HOLDINGS, result.data);
                  updateMeta({ market: new Date().toISOString() });
              }
+        } else if (context === 'GOLD_ETF') {
+            result = parseGoldETFCSV(content);
+            if (result.success && result.data) {
+                setGoldHoldings(result.data);
+                persist(STORAGE_KEYS.GOLD_HOLDINGS, result.data);
+                updateMeta({ market: new Date().toISOString() });
+            }
         } else {
              const lines = content.split('\n').filter(line => line.trim() !== '');
              setLastUploadPreview(lines.slice(0, 5).map(l => l.split(',')));
@@ -180,16 +192,15 @@ export const usePortfolioData = (context: AssetContext) => {
     // -- Metrics Calculation --
     const metrics = useMemo(() => {
         if (context === 'MUTUAL_FUNDS') {
-             // MF Logic: No trades, just snapshot
              const totalInvested = mfHoldings.reduce((acc, h) => acc + h.invested, 0);
              const currentValue = mfHoldings.reduce((acc, h) => acc + h.marketValue, 0);
              const unrealizedPnL = currentValue - totalInvested;
-             const grossRealizedPnL = 0; // Not available in MF snapshot
+             const grossRealizedPnL = 0;
              const netRealizedPnL = 0;
              const charges = 0;
              const totalDividends = 0;
              const cashBalance = 0;
-             const xirr = 0; // Can't calculate without dates/flows
+             const xirr = 0; 
 
              const finalHoldings = mfHoldings.map(h => ({
                  ...h,
@@ -208,6 +219,35 @@ export const usePortfolioData = (context: AssetContext) => {
                  tradePerformance: {}
              };
         }
+
+        if (context === 'GOLD_ETF') {
+            const totalInvested = goldHoldings.reduce((acc, h) => acc + h.invested, 0);
+            const currentValue = goldHoldings.reduce((acc, h) => acc + h.marketValue, 0);
+            const unrealizedPnL = currentValue - totalInvested;
+            const grossRealizedPnL = 0;
+            const netRealizedPnL = 0;
+            const charges = 0;
+            const totalDividends = 0;
+            const cashBalance = 0;
+            const xirr = 0; 
+
+            const finalHoldings = goldHoldings.map(h => ({
+                ...h,
+                unrealized: h.marketValue - h.invested,
+                netReturnPct: h.invested > 0 ? ((h.marketValue - h.invested) / h.invested) * 100 : 0,
+                portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0,
+                daysHeld: 0,
+                realized: 0
+            })).sort((a, b) => b.portfolioPct - a.portfolioPct);
+
+            return {
+                totalInvested, currentValue, unrealizedPnL, grossRealizedPnL, netRealizedPnL,
+                charges, totalDividends, cashBalance, xirr,
+                holdings: finalHoldings,
+                hasLiveData: goldHoldings.length > 0,
+                tradePerformance: {}
+            };
+       }
 
         const { grossRealizedPnL, totalInvested, holdings, tradePerformance } = calculateFIFO(trades);
         
@@ -295,11 +335,11 @@ export const usePortfolioData = (context: AssetContext) => {
             hasLiveData: Object.keys(priceData).length > 0,
             tradePerformance
         };
-    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings]);
+    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings, goldHoldings]);
 
     return {
         trades, pnlData, ledgerData, dividendData, priceData, watchlist, uploadMeta, sheetId,
-        metrics, lastUploadPreview, MUTUAL_FUND_SHEET_URL,
+        metrics, lastUploadPreview, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL,
         processFile, clearAllData, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId
     };
 };

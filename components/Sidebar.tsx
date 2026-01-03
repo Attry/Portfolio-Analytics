@@ -24,7 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
 
   // Filter menu items based on context
   const filteredMenuItems = menuItems.filter(item => {
-      if (currentContext === 'MUTUAL_FUNDS') {
+      if (currentContext === 'MUTUAL_FUNDS' || currentContext === 'GOLD_ETF') {
           return [ViewState.DASHBOARD, ViewState.HOLDINGS].includes(item.id);
       }
       return true;
@@ -37,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
             onClick={() => {
                 setContext(context);
                 // Reset to Dashboard if current view is not available in new context
-                if (context === 'MUTUAL_FUNDS' && ![ViewState.DASHBOARD, ViewState.HOLDINGS].includes(currentView)) {
+                if ((context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF') && ![ViewState.DASHBOARD, ViewState.HOLDINGS].includes(currentView)) {
                     setView(ViewState.DASHBOARD);
                 }
             }}
@@ -98,11 +98,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
             <div className="space-y-4">
                 {renderAssetButton('Indian Equity', 'INDIAN_EQUITY')}
                 {renderAssetButton('Mutual Funds', 'MUTUAL_FUNDS')}
+                {renderAssetButton('Gold ETF', 'GOLD_ETF')}
 
                 {showAccounts && (
                     <div className="space-y-4 pt-2 animate-fade-in border-t border-white/5">
                          {renderAssetButton('International Equity', 'INTERNATIONAL_EQUITY')}
-                         {renderAssetButton('Gold ETF', 'GOLD_ETF')}
                          {renderAssetButton('Cash Equivalents', 'CASH_EQUIVALENTS')}
                     </div>
                 )}

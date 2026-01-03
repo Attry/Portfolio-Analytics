@@ -18,8 +18,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
     const totalCapitalForReturns = metrics.totalInvested + metrics.cashBalance;
     const netReturnPct = totalCapitalForReturns > 0 ? (netTotalReturns / totalCapitalForReturns) * 100 : 0;
     
-    // For Mutual Funds, Return % is just based on Unrealized P&L vs Invested as realized P&L is 0
-    const displayReturnPct = context === 'MUTUAL_FUNDS' 
+    // For Mutual Funds and Gold ETF, Return % is just based on Unrealized P&L vs Invested as realized P&L is 0
+    const displayReturnPct = (context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF')
         ? (metrics.totalInvested > 0 ? (metrics.unrealizedPnL / metrics.totalInvested) * 100 : 0)
         : netReturnPct;
 
@@ -35,6 +35,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
     const diversificationCount = useMemo(() => {
         return metrics.holdings.filter((h: any) => h.ticker !== 'CASH BALANCE').length;
     }, [metrics.holdings]);
+
+    // Simplified view for Gold ETF
+    if (context === 'GOLD_ETF') {
+        return (
+            <div className="space-y-6 animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <StatsCard 
+                        title="Current Value" 
+                        value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
+                        icon={<Wallet />}
+                        change={`${displayReturnPct.toFixed(2)}%`}
+                        changeLabel="Net Return"
+                        isPositive={displayReturnPct >= 0}
+                    />
+                    <StatsCard 
+                        title="Total Invested" 
+                        value={`${currencySymbol}${metrics.totalInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
+                        icon={<Briefcase />} 
+                    />
+                    <StatsCard 
+                        title="Unrealized P&L" 
+                        value={`${currencySymbol}${metrics.unrealizedPnL.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
+                        icon={<TrendingUp />} 
+                        isPositive={metrics.unrealizedPnL >= 0}
+                    />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-fade-in">

@@ -71,7 +71,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   const currencySymbol = context === 'INTERNATIONAL_EQUITY' ? '€' : '₹';
   
   const {
-      trades, metrics, watchlist, priceData, uploadMeta, sheetId, MUTUAL_FUND_SHEET_URL,
+      trades, metrics, watchlist, priceData, uploadMeta, sheetId, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL,
       processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId
   } = usePortfolioData(context);
 
@@ -85,6 +85,8 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         let url = '';
         if (context === 'MUTUAL_FUNDS') {
              url = MUTUAL_FUND_SHEET_URL;
+        } else if (context === 'GOLD_ETF') {
+             url = GOLD_ETF_SHEET_URL;
         } else {
             if (!sheetId || !marketDate) { alert("Please provide both Sheet ID and Date."); setIsFetchingSheet(false); return; }
             url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
@@ -96,7 +98,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         if (csvText.toLowerCase().includes('<!doctype html>')) throw new Error("Access denied. Publish sheet to web.");
         
         // Use the hook's processor
-        // For MF, marketDate isn't strictly needed for parsing but we pass it for meta
+        // For MF and Gold, marketDate isn't strictly needed for parsing but we pass it for meta
         processFile(csvText, 'MARKET_DATA', marketDate || new Date().toISOString().split('T')[0]);
     } catch (error: any) {
         console.error(error);
@@ -109,7 +111,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   // Auto-sync effect
   useEffect(() => {
     const timer = setTimeout(() => {
-        if (context === 'MUTUAL_FUNDS' || (sheetId && marketDate && Object.keys(priceData).length === 0)) {
+        if (context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF' || (sheetId && marketDate && Object.keys(priceData).length === 0)) {
              handleGoogleSheetFetch();
         }
     }, 5000);
@@ -119,7 +121,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: any) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (type === 'MARKET_DATA' && !marketDate && context !== 'MUTUAL_FUNDS') {
+    if (type === 'MARKET_DATA' && !marketDate && context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF') {
         alert("Please select the Date of Market Data before uploading.");
         event.target.value = '';
         return;
@@ -157,9 +159,9 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         {currentView === ViewState.DASHBOARD && <DashboardView metrics={metrics} currencySymbol={currencySymbol} context={context} />}
         {currentView === ViewState.HOLDINGS && <HoldingsView metrics={metrics} currencySymbol={currencySymbol} context={context} />}
         
-        {/* Render restricted views only if not Mutual Funds (just extra safety, sidebar handles nav) */}
-        {context !== 'MUTUAL_FUNDS' && currentView === ViewState.TRANSACTIONS && <TransactionsView trades={trades} metrics={metrics} currencySymbol={currencySymbol} />}
-        {context !== 'MUTUAL_FUNDS' && currentView === ViewState.WATCHLIST && (
+        {/* Render restricted views only if not Mutual Funds/Gold ETF (just extra safety, sidebar handles nav) */}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && currentView === ViewState.TRANSACTIONS && <TransactionsView trades={trades} metrics={metrics} currencySymbol={currencySymbol} />}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && currentView === ViewState.WATCHLIST && (
             <WatchlistView 
                 watchlist={watchlist} 
                 priceData={priceData} 
@@ -169,9 +171,9 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                 onUpdate={updateWatchlistItem}
             />
         )}
-        {/* AI Insights relies on trades, so hidden for MF */}
-        {context !== 'MUTUAL_FUNDS' && currentView === ViewState.AI_INSIGHTS && <AIInsightsView trades={trades} />}
-        {context !== 'MUTUAL_FUNDS' && currentView === ViewState.UPLOAD && (
+        {/* AI Insights relies on trades, so hidden for MF/Gold */}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && currentView === ViewState.AI_INSIGHTS && <AIInsightsView trades={trades} />}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && currentView === ViewState.UPLOAD && (
             <UploadView 
                 context={context} 
                 uploadMeta={uploadMeta} 

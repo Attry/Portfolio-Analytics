@@ -1,4 +1,3 @@
-
 import { Trade, TradeType, PnLRecord, LedgerRecord, DividendRecord } from '../types';
 import { clean, normalizeHeader, parseNum, parseIndianDate } from '../utils/common';
 
@@ -160,6 +159,60 @@ export const parseMutualFundCSV = (content: string): ParseResult<any[]> => {
         }).filter(h => h !== null);
         
         return { success: true, data: holdings, headers, message: `Imported ${holdings.length} Mutual Fund records.` };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+};
+
+export const parseGoldETFCSV = (content: string): ParseResult<any[]> => {
+    // Expected Columns: Date, Fund, Avg Price, Qty, Value, Current Price, Current Value
+    try {
+        const lines = content.split('\n').filter(line => line.trim() !== '');
+        const delimiter = (lines[0] || '').includes(';') ? ';' : ',';
+        const splitRegex = delimiter === ';' ? /;(?=(?:(?:[^"]*"){2})*[^"]*$)/ : /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+        
+        const rawRows = lines.map(line => line.split(splitRegex));
+        
+        const headerIdx = findHeaderRowIndex(rawRows, ['Fund', 'Avg Price', 'Current Value']);
+        if (headerIdx === -1) return { success: false, message: "Gold ETF headers not found. Expecting 'Fund', 'Avg Price', 'Current Value'." };
+        
+        const headers = rawRows[headerIdx];
+        const rows = rawRows.slice(headerIdx + 1);
+        
+        const idxFund = getColIndex(headers, ['Fund', 'Scheme Name', 'ETF Name']);
+        const idxAvgPrice = getColIndex(headers, ['Avg Price', 'Price']);
+        const idxQty = getColIndex(headers, ['Qty', 'Units', 'Quantity']);
+        const idxValue = getColIndex(headers, ['Value', 'Invested Value']);
+        const idxCurPrice = getColIndex(headers, ['Current Price', 'LTP']);
+        const idxCurVal = getColIndex(headers, ['Current Value', 'Market Value']);
+        
+        const holdings = rows.map(row => {
+            const fund = clean(row[idxFund] || '');
+            if (!fund) return null;
+            
+            const qty = Math.abs(parseNum(row[idxQty] || ''));
+            const invested = Math.abs(parseNum(row[idxValue] || ''));
+            const marketValue = Math.abs(parseNum(row[idxCurVal] || ''));
+            
+            // Explicit columns usually exist in this dataset
+            const avgPrice = idxAvgPrice !== -1 ? parseNum(row[idxAvgPrice] || '') : (qty > 0 ? invested / qty : 0);
+            const marketPrice = idxCurPrice !== -1 ? parseNum(row[idxCurPrice] || '') : (qty > 0 ? marketValue / qty : 0);
+
+            if (qty === 0 && invested === 0) return null;
+
+            return {
+                ticker: fund,
+                qty,
+                avgPrice, 
+                invested,
+                marketPrice,
+                marketValue,
+                unrealized: marketValue - invested,
+                realized: 0
+            };
+        }).filter(h => h !== null);
+        
+        return { success: true, data: holdings, headers, message: `Imported ${holdings.length} Gold ETF records.` };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
@@ -328,9 +381,9 @@ export const parseIndianEquity = (type: string, rawRows: string[][]): ParseResul
 };
 
 export const parseInternationalEquity = (type: string, rawRows: string[][]): ParseResult<any> => {
-      if (type === 'TRADE_HISTORY') {
+    if (type === 'TRADE_HISTORY') {
           const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Produit', 'Quantité']);
-          if (headerIdx === -1) return { success: false, message: "Header not found (Degiro)." };
+          if (headerIdx === -1) return { success: false, message: "Could not find Degiro transactions header. Expecting 'Date', 'Produit' and 'Quantité'." };
           
           const headers = rawRows[headerIdx];
           const rows = rawRows.slice(headerIdx + 1);
@@ -341,18 +394,25 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
           const idxQty = getColIndex(headers, ['Quantité', 'Quantity', 'Quantite']); 
           const idxPrice = getColIndex(headers, ['Cours', 'Price']);
           const idxNetEUR = getColIndex(headers, ['Montant négocié EUR', 'Montant negocie EUR', 'Montant EUR', 'Net Amount', 'Total']); 
+          
+          // Fee/Tax Columns Logic
           const idxAutoFX = getColIndex(headers, ['Frais conversion AutoFX', 'AutoFX']);
           const idxBrokerage = getColIndex(headers, ['Frais de courtage et/ou de parties', 'Courtage', 'Brokerage', 'Commission']);
 
           const newTrades: Trade[] = [];
           let totalFeesAccumulated = 0;
+          
           const orderedRows = [...rows].reverse();
 
           orderedRows.forEach(row => {
               let dateStr = parseIndianDate(clean(row[idxDate] || ''));
               if (!dateStr) return;
-              if (idxTime !== -1 && clean(row[idxTime] || '').includes(':')) {
-                  dateStr = `${dateStr}T${clean(row[idxTime] || '')}`;
+
+              if (idxTime !== -1) {
+                  const timeStr = clean(row[idxTime] || '');
+                  if (timeStr && timeStr.includes(':')) {
+                      dateStr = `${dateStr}T${timeStr}`;
+                  }
               }
 
               const ticker = clean(row[idxTicker] || '');
@@ -361,39 +421,65 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
               const price = Math.abs(parseNum(row[idxPrice] || ''));
               const tradeType = qtyRaw > 0 ? TradeType.BUY : TradeType.SELL;
               
-              totalFeesAccumulated += (idxAutoFX !== -1 ? Math.abs(parseNum(row[idxAutoFX] || '')) : 0) + 
-                                      (idxBrokerage !== -1 ? Math.abs(parseNum(row[idxBrokerage] || '')) : 0);
+              // Accumulate Charges
+              const autoFXFee = idxAutoFX !== -1 ? Math.abs(parseNum(row[idxAutoFX] || '')) : 0;
+              const brokerageFee = idxBrokerage !== -1 ? Math.abs(parseNum(row[idxBrokerage] || '')) : 0;
+              totalFeesAccumulated += (autoFXFee + brokerageFee);
 
-              let netAmount = (idxNetEUR !== -1 && row[idxNetEUR]) ? parseNum(row[idxNetEUR]) : (tradeType === TradeType.BUY ? -(qty * price) : (qty * price));
+              let netAmount = 0;
+              if (idxNetEUR !== -1 && row[idxNetEUR]) {
+                  netAmount = parseNum(row[idxNetEUR]);
+              } else {
+                  netAmount = tradeType === TradeType.BUY ? -(qty * price) : (qty * price);
+              }
 
               if (ticker && qty > 0) {
-                  newTrades.push({ id: Math.random().toString(36).substr(2, 9), date: dateStr, ticker, type: tradeType, quantity: qty, price, netAmount, status: 'TRADED' });
+                  newTrades.push({
+                      id: Math.random().toString(36).substr(2, 9),
+                      date: dateStr,
+                      ticker,
+                      type: tradeType,
+                      quantity: qty,
+                      price,
+                      netAmount,
+                      status: 'TRADED'
+                  });
               }
           });
 
           if (newTrades.length > 0) {
-              return { success: true, data: newTrades, headers, message: `Imported ${newTrades.length} trades.`, summary: { charges: totalFeesAccumulated } };
+            return { 
+                success: true, 
+                data: newTrades, 
+                headers, 
+                message: `Imported ${newTrades.length} Degiro transactions.`,
+                summary: { charges: totalFeesAccumulated }
+            };
           }
-          return { success: false, message: "No trades parsed." };
-      }
-      else if (type === 'LEDGER') {
+          return { success: false, message: "No valid trades parsed. Check CSV format." };
+    }
+    else if (type === 'LEDGER') {
            const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Description']);
            if (headerIdx !== -1) {
                const headers = rawRows[headerIdx];
                const rows = rawRows.slice(headerIdx + 1);
+               
                const idxDate = getColIndex(headers, ['Date', 'Value Date']);
                const idxDesc = getColIndex(headers, ['Description']);
                const idxProduct = getColIndex(headers, ['Produit', 'Product']);
                const idxCurrency = getColIndex(headers, ['Mouvements', 'Movement', 'Change']); 
                
                const newDividends: DividendRecord[] = [];
+               
                rows.forEach(row => {
                    if (idxDesc === -1 || idxDate === -1) return;
                    const desc = clean(row[idxDesc] || '');
+                   
                    if (desc === 'Dividende') {
                        const dateStr = parseIndianDate(clean(row[idxDate] || ''));
                        if (!dateStr) return;
                        const scripName = idxProduct !== -1 ? clean(row[idxProduct] || '') : 'Unknown';
+                       
                        let currency = 'EUR';
                        let valStr = '0';
 
@@ -408,14 +494,19 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
                                if (idxDevise !== -1) currency = clean(row[idxDevise] || 'EUR').toUpperCase();
                            }
                        }
+
                        const amountVal = parseFloat(valStr.replace(/\./g, '').replace(',', '.'));
+
                        if (!isNaN(amountVal) && amountVal !== 0) {
                            let rate = 1.0; 
                            if (currency === 'USD') rate = 0.92;
                            else if (currency === 'NO' || currency === 'NOK') rate = 0.088; 
                            else if (currency === 'SEK') rate = 0.087;
                            else if (currency === 'GBP') rate = 1.17;
-                           newDividends.push({ date: dateStr, scripName, amount: Math.abs(amountVal) * rate });
+
+                           const convertedAmount = Math.abs(amountVal) * rate;
+
+                           newDividends.push({ date: dateStr, scripName, amount: convertedAmount });
                        }
                    }
                });
@@ -423,26 +514,33 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
                if (newDividends.length > 0) {
                    return { success: true, data: newDividends, headers, message: `Imported ${newDividends.length} Dividend records.`, summary: { dividends: 0 } };
                }
+               return { success: false, message: "No rows with Description 'Dividende' found." };
            }
-           return { success: false, message: "Ledger/Dividend parsing failed." };
-      }
-      else if (type === 'PORTFOLIO_SNAPSHOT') {
-          let cashVal = 0;
-          if (rawRows.length > 1 && rawRows[1].length > 6) cashVal = parseNum(rawRows[1][6]);
-          
+           return { success: false, message: "Could not find Degiro Account headers (Date, Description)." };
+    }
+    else if (type === 'PORTFOLIO_SNAPSHOT') {
+          let extractedCash = 0;
+          if (rawRows.length > 1 && rawRows[1].length > 6) {
+              const cashVal = parseNum(rawRows[1][6]);
+              if (cashVal !== 0) extractedCash = cashVal;
+          }
+
           const headerIdx = findHeaderRowIndex(rawRows, ['Produit', 'Clôture']); 
-          if (headerIdx === -1) return { success: false, message: "Portfolio headers not found." };
+          if (headerIdx === -1) return { success: false, message: "Could not find Degiro Portfolio headers (Produit, Clôture)." };
 
           const headers = rawRows[headerIdx];
           const rows = rawRows.slice(headerIdx + 1);
+          
           const idxProduct = getColIndex(headers, ['Produit', 'Product']);
           const idxPrice = getColIndex(headers, ['Clôture', 'Close', 'Price']);
           
           const newPrices: Record<string, number> = {};
           let count = 0;
+          
           rows.forEach(row => {
               const ticker = clean(row[idxProduct] || '').toUpperCase();
               const price = Math.abs(parseNum(row[idxPrice] || ''));
+              
               if (ticker && price > 0) {
                   newPrices[ticker] = price;
                   count++;
@@ -450,9 +548,9 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
           });
           
           if (count > 0) {
-              return { success: true, data: newPrices, headers, message: `Updated prices for ${count} stocks.`, summary: { cash: cashVal } };
+              return { success: true, data: newPrices, headers, message: `Updated prices for ${count} stocks.`, summary: { cash: extractedCash } };
           }
-          return { success: false, message: "No portfolio prices found." };
-      }
-      return { success: false, message: "Unknown upload type." };
+          return { success: false, message: "No valid pricing data found in Portfolio CSV." };
+    }
+    return { success: false, message: "Unknown upload type for International Equity." };
 };
