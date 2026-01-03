@@ -165,7 +165,7 @@ export const usePortfolioData = (context: AssetContext) => {
     };
 
     // -- File Processing --
-    const processFile = (content: string, type: UploadType, marketDate?: string) => {
+    const processFile = (content: string, type: UploadType, marketDate?: string, isBackground: boolean = false) => {
         let result: ParseResult<any> = { success: false, message: "No parser matched." };
 
         if (context === 'MUTUAL_FUNDS') {
@@ -228,7 +228,12 @@ export const usePortfolioData = (context: AssetContext) => {
         }
 
         if (result.summary) updateSummary(result.summary);
-        alert(result.message);
+        
+        if (!isBackground) {
+            alert(result.message);
+        } else if (!result.success) {
+            console.error("Background sync failed:", result.message);
+        }
     };
 
     // -- Metrics Calculation --

@@ -80,7 +80,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   const [isFetchingSheet, setIsFetchingSheet] = useState(false);
 
   // -- Google Sheet Sync --
-  const handleGoogleSheetFetch = async () => {
+  const handleGoogleSheetFetch = async (isBackground = false) => {
     setIsFetchingSheet(true);
     try {
         let url = '';
@@ -89,7 +89,11 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         } else if (context === 'GOLD_ETF') {
              url = GOLD_ETF_SHEET_URL;
         } else {
-            if (!sheetId || !globalMarketDate) { alert("Please provide both Sheet ID and Market Date."); setIsFetchingSheet(false); return; }
+            if (!sheetId || !globalMarketDate) { 
+                if (!isBackground) alert("Please provide both Sheet ID and Market Date."); 
+                setIsFetchingSheet(false); 
+                return; 
+            }
             url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
         }
 
@@ -99,10 +103,10 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         if (csvText.toLowerCase().includes('<!doctype html>')) throw new Error("Access denied. Publish sheet to web.");
         
         // Use the hook's processor
-        processFile(csvText, 'MARKET_DATA', globalMarketDate);
+        processFile(csvText, 'MARKET_DATA', globalMarketDate, isBackground);
     } catch (error: any) {
         console.error(error);
-        alert(`Failed to fetch data: ${error.message}`);
+        if (!isBackground) alert(`Failed to fetch data: ${error.message}`);
     } finally {
         setIsFetchingSheet(false);
     }
@@ -112,7 +116,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   useEffect(() => {
     const timer = setTimeout(() => {
         if (context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF' || (sheetId && globalMarketDate && Object.keys(priceData).length === 0)) {
-             handleGoogleSheetFetch();
+             handleGoogleSheetFetch(true);
         }
     }, 5000);
     return () => clearTimeout(timer);
@@ -171,7 +175,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                         {metrics.hasLiveData ? 'LIVE' : 'OFFLINE'}
                     </p>
                  </div>
-                 <button onClick={handleGoogleSheetFetch} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors" title="Sync Market Data">
+                 <button onClick={() => handleGoogleSheetFetch(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors" title="Sync Market Data">
                     <RefreshCw size={18} className={`text-primary-glow ${isFetchingSheet ? 'animate-spin' : ''}`} />
                  </button>
             </div>
@@ -203,7 +207,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                 sheetId={sheetId}
                 setSheetId={saveSheetId}
                 onFileUpload={handleFileUpload}
-                onSync={handleGoogleSheetFetch}
+                onSync={() => handleGoogleSheetFetch(false)}
                 isSyncing={isFetchingSheet}
             />
         )}
