@@ -106,8 +106,8 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                                 <td className="px-6 py-4 text-gray-300 text-right font-mono">{h.portfolioPct.toFixed(2)}%</td>
                                 <td className="px-6 py-4 text-gray-300 text-right font-mono">{isCash || h.daysHeld === 0 ? '-' : `${h.daysHeld} Days`}</td>
                                 {showRealized && (
-                                    <td className={`px-6 py-4 text-right font-mono font-bold ${h.realized >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        {isCash ? '-' : `${h.realized >= 0 ? '+' : '-'}${currencySymbol}${Math.abs(h.realized).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                                    <td className={`px-6 py-4 text-right font-mono font-bold ${h.realized === 0 ? 'text-gray-400' : (h.realized > 0 ? 'text-success' : 'text-danger')}`}>
+                                        {(isCash || h.realized === 0) ? '-' : `${h.realized > 0 ? '+' : '-'}${currencySymbol}${Math.abs(h.realized).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                                     </td>
                                 )}
                                 <td className={`px-6 py-4 text-right font-mono font-bold ${h.unrealized >= 0 ? 'text-success' : 'text-danger'}`}>
