@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { AssetContext, Trade, PnLRecord, LedgerRecord, DividendRecord, WatchlistItem, ViewState } from '../types';
 import { calculateFIFO, calculateXIRR, PerStockData } from '../utils/financials';
-import { parseMarketDataCSV, parseIndianEquity, parseInternationalEquity, ParseResult } from '../services/csvParsers';
+import { parseMarketDataCSV, parseIndianEquity, parseInternationalEquity, parseMutualFundCSV, ParseResult } from '../services/csvParsers';
 
 type UploadType = 'PNL' | 'LEDGER' | 'DIVIDEND' | 'TRADE_HISTORY' | 'MARKET_DATA' | 'PORTFOLIO_SNAPSHOT';
 
@@ -21,6 +21,7 @@ const getStorageKeys = (context: AssetContext) => {
     if (context === 'INTERNATIONAL_EQUITY') prefix = 'intl';
     else if (context === 'GOLD_ETF') prefix = 'gold';
     else if (context === 'CASH_EQUIVALENTS') prefix = 'cash';
+    else if (context === 'MUTUAL_FUNDS') prefix = 'mf';
 
     return {
         TRADES: `${prefix}_trades`,
@@ -31,9 +32,13 @@ const getStorageKeys = (context: AssetContext) => {
         WATCHLIST: `${prefix}_watchlist`,
         META: `${prefix}_meta`,
         SUMMARY: `${prefix}_summary`,
-        SHEET_ID: `${prefix}_sheet_id`
+        SHEET_ID: `${prefix}_sheet_id`,
+        MF_HOLDINGS: `${prefix}_holdings` // Specific for MF snapshots
     };
 };
+
+// Explicit URL for Mutual Funds as provided
+const MUTUAL_FUND_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXbYB5_8MwjNl-J6vYg7_vxhr2ks3F46pXZbzZBLz7nuCCvxP24nLYZicQzxo5ej00hxIIw7Eduh1n/pub?gid=0&single=true&output=csv";
 
 export const usePortfolioData = (context: AssetContext) => {
     const STORAGE_KEYS = useMemo(() => getStorageKeys(context), [context]);
@@ -47,13 +52,18 @@ export const usePortfolioData = (context: AssetContext) => {
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.WATCHLIST) || '[]'));
     const [uploadMeta, setUploadMeta] = useState<UploadMeta>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.META) || '{}'));
     
+    // MF Specific State
+    const [mfHoldings, setMfHoldings] = useState<any[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.MF_HOLDINGS) || '[]'));
+    
     const [summary, setSummary] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.SUMMARY) || '{}'));
     const [sheetId, setSheetId] = useState<string>(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.SHEET_ID);
         if (saved) {
              try { return JSON.parse(saved); } catch(e) { return saved; }
         }
-        return context === 'INTERNATIONAL_EQUITY' ? "1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY" : "1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI";
+        if (context === 'INTERNATIONAL_EQUITY') return "1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY";
+        if (context === 'MUTUAL_FUNDS') return "LINKED_TO_PUB_URL"; 
+        return "1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI";
     });
 
     const [lastUploadPreview, setLastUploadPreview] = useState<any[]>([]);
@@ -84,7 +94,7 @@ export const usePortfolioData = (context: AssetContext) => {
     const clearAllData = () => {
         if (!confirm(`Clear all data for ${context}?`)) return;
         Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
-        setTrades([]); setPnlData([]); setLedgerData([]); setDividendData([]); setPriceData({}); setWatchlist([]); setUploadMeta({}); setSummary({});
+        setTrades([]); setPnlData([]); setLedgerData([]); setDividendData([]); setPriceData({}); setWatchlist([]); setUploadMeta({}); setSummary({}); setMfHoldings([]);
         alert('Data cleared.');
     };
 
@@ -109,48 +119,56 @@ export const usePortfolioData = (context: AssetContext) => {
 
     // -- File Processing --
     const processFile = (content: string, type: UploadType, marketDate?: string) => {
-        const lines = content.split('\n').filter(line => line.trim() !== '');
-        // Naive split just for preview
-        setLastUploadPreview(lines.slice(0, 5).map(l => l.split(',')));
-
-        // Determine delimiter and split properly
-        const firstLine = lines[0] || '';
-        const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
-        const splitRegex = delimiter === ';' ? /;(?=(?:(?:[^"]*"){2})*[^"]*$)/ : /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-        const rawRows = lines.map(line => line.split(splitRegex));
-
         let result: ParseResult<any> = { success: false, message: "No parser matched." };
 
-        if (type === 'MARKET_DATA') {
-            result = parseMarketDataCSV(content);
-            if (result.success && result.data) {
-                const updatedPrices = { ...priceData, ...result.data };
-                setPriceData(updatedPrices);
-                persist(STORAGE_KEYS.PRICES, updatedPrices);
-                updateMeta({ market: new Date().toISOString(), marketDate });
-            }
-        } else if (context === 'INDIAN_EQUITY') {
-            result = parseIndianEquity(type, rawRows);
-            if (result.success && result.data) {
-                if (type === 'TRADE_HISTORY') { setTrades(result.data); persist(STORAGE_KEYS.TRADES, result.data); updateMeta({ trades: new Date().toISOString() }); }
-                if (type === 'PNL') { setPnlData(result.data); persist(STORAGE_KEYS.PNL, result.data); updateMeta({ pnl: new Date().toISOString() }); }
-                if (type === 'LEDGER') { setLedgerData(result.data); persist(STORAGE_KEYS.LEDGER, result.data); updateMeta({ ledger: new Date().toISOString() }); }
-                if (type === 'DIVIDEND') { setDividendData(result.data); persist(STORAGE_KEYS.DIVIDENDS, result.data); updateMeta({ dividend: new Date().toISOString() }); }
-            }
-        } else if (context === 'INTERNATIONAL_EQUITY') {
-            result = parseInternationalEquity(type, rawRows);
-            if (result.success && result.data) {
-                if (type === 'TRADE_HISTORY') { setTrades(result.data); persist(STORAGE_KEYS.TRADES, result.data); updateMeta({ trades: new Date().toISOString() }); }
-                if (type === 'LEDGER') { 
-                    setDividendData(result.data); 
-                    persist(STORAGE_KEYS.DIVIDENDS, result.data); 
-                    updateMeta({ dividend: new Date().toISOString(), ledger: new Date().toISOString() }); 
-                }
-                if (type === 'PORTFOLIO_SNAPSHOT') { 
+        if (context === 'MUTUAL_FUNDS') {
+             // For MF, "MARKET_DATA" is effectively the Portfolio Snapshot ingestion
+             result = parseMutualFundCSV(content);
+             if (result.success && result.data) {
+                 setMfHoldings(result.data);
+                 persist(STORAGE_KEYS.MF_HOLDINGS, result.data);
+                 updateMeta({ market: new Date().toISOString() });
+             }
+        } else {
+             const lines = content.split('\n').filter(line => line.trim() !== '');
+             setLastUploadPreview(lines.slice(0, 5).map(l => l.split(',')));
+
+             const firstLine = lines[0] || '';
+             const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
+             const splitRegex = delimiter === ';' ? /;(?=(?:(?:[^"]*"){2})*[^"]*$)/ : /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+             const rawRows = lines.map(line => line.split(splitRegex));
+
+            if (type === 'MARKET_DATA') {
+                result = parseMarketDataCSV(content);
+                if (result.success && result.data) {
                     const updatedPrices = { ...priceData, ...result.data };
                     setPriceData(updatedPrices);
                     persist(STORAGE_KEYS.PRICES, updatedPrices);
-                    updateMeta({ portfolio: new Date().toISOString(), marketDate: new Date().toISOString().split('T')[0] });
+                    updateMeta({ market: new Date().toISOString(), marketDate });
+                }
+            } else if (context === 'INDIAN_EQUITY') {
+                result = parseIndianEquity(type, rawRows);
+                if (result.success && result.data) {
+                    if (type === 'TRADE_HISTORY') { setTrades(result.data); persist(STORAGE_KEYS.TRADES, result.data); updateMeta({ trades: new Date().toISOString() }); }
+                    if (type === 'PNL') { setPnlData(result.data); persist(STORAGE_KEYS.PNL, result.data); updateMeta({ pnl: new Date().toISOString() }); }
+                    if (type === 'LEDGER') { setLedgerData(result.data); persist(STORAGE_KEYS.LEDGER, result.data); updateMeta({ ledger: new Date().toISOString() }); }
+                    if (type === 'DIVIDEND') { setDividendData(result.data); persist(STORAGE_KEYS.DIVIDENDS, result.data); updateMeta({ dividend: new Date().toISOString() }); }
+                }
+            } else if (context === 'INTERNATIONAL_EQUITY') {
+                result = parseInternationalEquity(type, rawRows);
+                if (result.success && result.data) {
+                    if (type === 'TRADE_HISTORY') { setTrades(result.data); persist(STORAGE_KEYS.TRADES, result.data); updateMeta({ trades: new Date().toISOString() }); }
+                    if (type === 'LEDGER') { 
+                        setDividendData(result.data); 
+                        persist(STORAGE_KEYS.DIVIDENDS, result.data); 
+                        updateMeta({ dividend: new Date().toISOString(), ledger: new Date().toISOString() }); 
+                    }
+                    if (type === 'PORTFOLIO_SNAPSHOT') { 
+                        const updatedPrices = { ...priceData, ...result.data };
+                        setPriceData(updatedPrices);
+                        persist(STORAGE_KEYS.PRICES, updatedPrices);
+                        updateMeta({ portfolio: new Date().toISOString(), marketDate: new Date().toISOString().split('T')[0] });
+                    }
                 }
             }
         }
@@ -161,9 +179,38 @@ export const usePortfolioData = (context: AssetContext) => {
 
     // -- Metrics Calculation --
     const metrics = useMemo(() => {
+        if (context === 'MUTUAL_FUNDS') {
+             // MF Logic: No trades, just snapshot
+             const totalInvested = mfHoldings.reduce((acc, h) => acc + h.invested, 0);
+             const currentValue = mfHoldings.reduce((acc, h) => acc + h.marketValue, 0);
+             const unrealizedPnL = currentValue - totalInvested;
+             const grossRealizedPnL = 0; // Not available in MF snapshot
+             const netRealizedPnL = 0;
+             const charges = 0;
+             const totalDividends = 0;
+             const cashBalance = 0;
+             const xirr = 0; // Can't calculate without dates/flows
+
+             const finalHoldings = mfHoldings.map(h => ({
+                 ...h,
+                 unrealized: h.marketValue - h.invested,
+                 netReturnPct: h.invested > 0 ? ((h.marketValue - h.invested) / h.invested) * 100 : 0,
+                 portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0,
+                 daysHeld: 0,
+                 realized: 0
+             })).sort((a, b) => b.portfolioPct - a.portfolioPct);
+
+             return {
+                 totalInvested, currentValue, unrealizedPnL, grossRealizedPnL, netRealizedPnL,
+                 charges, totalDividends, cashBalance, xirr,
+                 holdings: finalHoldings,
+                 hasLiveData: mfHoldings.length > 0,
+                 tradePerformance: {}
+             };
+        }
+
         const { grossRealizedPnL, totalInvested, holdings, tradePerformance } = calculateFIFO(trades);
         
-        // Summary data from parser or manual override
         let charges = summary.charges || 0;
         let totalDividends = Math.max(dividendData.reduce((acc, curr) => acc + curr.amount, 0), summary.dividends || 0);
         let cashBalance = summary.cash || 0;
@@ -180,7 +227,6 @@ export const usePortfolioData = (context: AssetContext) => {
               const pnlRecord = pnlData.find(p => p.scripName.toLowerCase() === ticker.toLowerCase());
               let livePrice = priceData[ticker.toUpperCase()]; 
 
-              // Fuzzy match for Intl
               if (livePrice === undefined && context === 'INTERNATIONAL_EQUITY') {
                   const cleanTicker = ticker.toUpperCase();
                   const priceKey = Object.keys(priceData).find(pk => {
@@ -220,7 +266,6 @@ export const usePortfolioData = (context: AssetContext) => {
         const currentValue = totalInvested + totalUnrealizedPnL + cashBalance;
         const netRealizedPnL = grossRealizedPnL - Math.abs(charges);
 
-        // Calc allocation pct
         const finalHoldings = portfolioHoldings.map(h => ({
             ...h, portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0
         }));
@@ -234,7 +279,6 @@ export const usePortfolioData = (context: AssetContext) => {
         }
         finalHoldings.sort((a, b) => b.portfolioPct - a.portfolioPct);
 
-        // XIRR
         let xirr = 0;
         if (trades.length > 0) {
              try {
@@ -251,11 +295,11 @@ export const usePortfolioData = (context: AssetContext) => {
             hasLiveData: Object.keys(priceData).length > 0,
             tradePerformance
         };
-    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context]);
+    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings]);
 
     return {
         trades, pnlData, ledgerData, dividendData, priceData, watchlist, uploadMeta, sheetId,
-        metrics, lastUploadPreview,
+        metrics, lastUploadPreview, MUTUAL_FUND_SHEET_URL,
         processFile, clearAllData, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId
     };
 };

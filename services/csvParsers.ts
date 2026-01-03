@@ -111,6 +111,60 @@ export const parseMarketDataCSV = (content: string): ParseResult<Record<string, 
     }
 };
 
+export const parseMutualFundCSV = (content: string): ParseResult<any[]> => {
+    // Expected Columns: Date, Fund, NAV, Qty, Value, Current NAV, Current Value
+    try {
+        const lines = content.split('\n').filter(line => line.trim() !== '');
+        const delimiter = (lines[0] || '').includes(';') ? ';' : ',';
+        const splitRegex = delimiter === ';' ? /;(?=(?:(?:[^"]*"){2})*[^"]*$)/ : /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+        
+        const rawRows = lines.map(line => line.split(splitRegex));
+        
+        const headerIdx = findHeaderRowIndex(rawRows, ['Fund', 'Current Value']);
+        if (headerIdx === -1) return { success: false, message: "Mutual Fund headers not found. Expecting 'Fund' and 'Current Value'." };
+        
+        const headers = rawRows[headerIdx];
+        const rows = rawRows.slice(headerIdx + 1);
+        
+        const idxFund = getColIndex(headers, ['Fund', 'Scheme Name', 'Description']);
+        const idxNAV = getColIndex(headers, ['NAV']); // This is usually Avg Cost NAV or Purchase NAV in this context
+        const idxQty = getColIndex(headers, ['Qty', 'Units']);
+        const idxValue = getColIndex(headers, ['Value', 'Invested Value', 'Cost Value']);
+        const idxCurNAV = getColIndex(headers, ['Current NAV', 'Market NAV']);
+        const idxCurVal = getColIndex(headers, ['Current Value', 'Market Value']);
+        
+        const holdings = rows.map(row => {
+            const fund = clean(row[idxFund] || '');
+            if (!fund) return null;
+            
+            const qty = Math.abs(parseNum(row[idxQty] || ''));
+            const invested = Math.abs(parseNum(row[idxValue] || ''));
+            const marketValue = Math.abs(parseNum(row[idxCurVal] || ''));
+            
+            // If explicit NAV columns are missing, infer from values
+            const avgPrice = idxNAV !== -1 ? parseNum(row[idxNAV] || '') : (qty > 0 ? invested / qty : 0);
+            const marketPrice = idxCurNAV !== -1 ? parseNum(row[idxCurNAV] || '') : (qty > 0 ? marketValue / qty : 0);
+
+            if (qty === 0 && invested === 0) return null;
+
+            return {
+                ticker: fund,
+                qty,
+                avgPrice, 
+                invested,
+                marketPrice,
+                marketValue,
+                unrealized: marketValue - invested,
+                realized: 0 // Snapshot does not provide realized P&L
+            };
+        }).filter(h => h !== null);
+        
+        return { success: true, data: holdings, headers, message: `Imported ${holdings.length} Mutual Fund records.` };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+};
+
 export const parseIndianEquity = (type: string, rawRows: string[][]): ParseResult<any> => {
     if (type === 'TRADE_HISTORY') {
          const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Price']);

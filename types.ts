@@ -1,3 +1,4 @@
+
 export enum TradeType {
   BUY = 'BUY',
   SELL = 'SELL'
@@ -76,4 +77,4 @@ export enum ViewState {
   AI_INSIGHTS = 'AI_INSIGHTS'
 }
 
-export type AssetContext = 'INDIAN_EQUITY' | 'INTERNATIONAL_EQUITY' | 'GOLD_ETF' | 'CASH_EQUIVALENTS';
+export type AssetContext = 'INDIAN_EQUITY' | 'INTERNATIONAL_EQUITY' | 'GOLD_ETF' | 'CASH_EQUIVALENTS' | 'MUTUAL_FUNDS';

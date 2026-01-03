@@ -1,8 +1,62 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { ViewState, AssetContext } from './types';
-import { RefreshCw } from 'lucide-react';
+import { StatsCard } from './components/StatsCard';
+import { ViewState, Trade, TradeType, PnLRecord, LedgerRecord, DividendRecord, StockPriceRecord, WatchlistItem, AssetContext } from './types';
+import { analyzePortfolio } from './services/geminiService';
+import { 
+  Briefcase, 
+  TrendingUp, 
+  Activity, 
+  Search, 
+  Filter, 
+  Download,
+  Send,
+  Loader2,
+  FileSpreadsheet,
+  UploadCloud,
+  BrainCircuit,
+  Receipt,
+  Landmark,
+  Coins,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  RefreshCw,
+  Scale,
+  Wallet,
+  CalendarClock,
+  Sparkles,
+  Zap,
+  ExternalLink,
+  Calendar,
+  Link,
+  Globe,
+  Trash2,
+  History,
+  ListChecks,
+  Plus,
+  X,
+  LineChart as LineChartIcon,
+  BarChart3,
+  FileText,
+  ArrowUpRight,
+  ArrowDownRight,
+  RotateCcw
+} from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
 
 // New Imports
 import { usePortfolioData } from './hooks/usePortfolioData';
@@ -13,11 +67,11 @@ import { WatchlistView } from './components/views/WatchlistView';
 import { AIInsightsView } from './components/views/AIInsightsView';
 import { UploadView } from './components/views/UploadView';
 
-const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewState }> = ({ context, currentView }) => {
+const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewState, setView: (view: ViewState) => void }> = ({ context, currentView, setView }) => {
   const currencySymbol = context === 'INTERNATIONAL_EQUITY' ? '€' : '₹';
   
   const {
-      trades, metrics, watchlist, priceData, uploadMeta, sheetId,
+      trades, metrics, watchlist, priceData, uploadMeta, sheetId, MUTUAL_FUND_SHEET_URL,
       processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId
   } = usePortfolioData(context);
 
@@ -26,17 +80,24 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
 
   // -- Google Sheet Sync --
   const handleGoogleSheetFetch = async () => {
-    if (!sheetId || !marketDate) { alert("Please provide both Sheet ID and Date."); return; }
     setIsFetchingSheet(true);
     try {
-        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+        let url = '';
+        if (context === 'MUTUAL_FUNDS') {
+             url = MUTUAL_FUND_SHEET_URL;
+        } else {
+            if (!sheetId || !marketDate) { alert("Please provide both Sheet ID and Date."); setIsFetchingSheet(false); return; }
+            url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+        }
+
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed: ${response.statusText}`);
         const csvText = await response.text();
         if (csvText.toLowerCase().includes('<!doctype html>')) throw new Error("Access denied. Publish sheet to web.");
         
         // Use the hook's processor
-        processFile(csvText, 'MARKET_DATA', marketDate);
+        // For MF, marketDate isn't strictly needed for parsing but we pass it for meta
+        processFile(csvText, 'MARKET_DATA', marketDate || new Date().toISOString().split('T')[0]);
     } catch (error: any) {
         console.error(error);
         alert(`Failed to fetch data: ${error.message}`);
@@ -48,17 +109,17 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   // Auto-sync effect
   useEffect(() => {
     const timer = setTimeout(() => {
-        if (sheetId && marketDate && Object.keys(priceData).length === 0) {
+        if (context === 'MUTUAL_FUNDS' || (sheetId && marketDate && Object.keys(priceData).length === 0)) {
              handleGoogleSheetFetch();
         }
     }, 5000);
     return () => clearTimeout(timer);
-  }, [sheetId]); 
+  }, [sheetId, context]); 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: any) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (type === 'MARKET_DATA' && !marketDate) {
+    if (type === 'MARKET_DATA' && !marketDate && context !== 'MUTUAL_FUNDS') {
         alert("Please select the Date of Market Data before uploading.");
         event.target.value = '';
         return;
@@ -93,10 +154,12 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
             </div>
         </div>
 
-        {currentView === ViewState.DASHBOARD && <DashboardView metrics={metrics} currencySymbol={currencySymbol} />}
-        {currentView === ViewState.HOLDINGS && <HoldingsView metrics={metrics} currencySymbol={currencySymbol} />}
-        {currentView === ViewState.TRANSACTIONS && <TransactionsView trades={trades} metrics={metrics} currencySymbol={currencySymbol} />}
-        {currentView === ViewState.WATCHLIST && (
+        {currentView === ViewState.DASHBOARD && <DashboardView metrics={metrics} currencySymbol={currencySymbol} context={context} />}
+        {currentView === ViewState.HOLDINGS && <HoldingsView metrics={metrics} currencySymbol={currencySymbol} context={context} />}
+        
+        {/* Render restricted views only if not Mutual Funds (just extra safety, sidebar handles nav) */}
+        {context !== 'MUTUAL_FUNDS' && currentView === ViewState.TRANSACTIONS && <TransactionsView trades={trades} metrics={metrics} currencySymbol={currencySymbol} />}
+        {context !== 'MUTUAL_FUNDS' && currentView === ViewState.WATCHLIST && (
             <WatchlistView 
                 watchlist={watchlist} 
                 priceData={priceData} 
@@ -106,8 +169,9 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                 onUpdate={updateWatchlistItem}
             />
         )}
-        {currentView === ViewState.AI_INSIGHTS && <AIInsightsView trades={trades} />}
-        {currentView === ViewState.UPLOAD && (
+        {/* AI Insights relies on trades, so hidden for MF */}
+        {context !== 'MUTUAL_FUNDS' && currentView === ViewState.AI_INSIGHTS && <AIInsightsView trades={trades} />}
+        {context !== 'MUTUAL_FUNDS' && currentView === ViewState.UPLOAD && (
             <UploadView 
                 context={context} 
                 uploadMeta={uploadMeta} 
@@ -137,7 +201,7 @@ const App: React.FC = () => {
                 <div className="absolute bottom-[-10%] left-[20%] w-[400px] h-[400px] bg-accent-cyan/5 rounded-full blur-[100px]"></div>
             </div>
             <div className="relative z-10 h-full">
-                <PortfolioDashboard key={context} context={context} currentView={view} />
+                <PortfolioDashboard key={context} context={context} currentView={view} setView={setView} />
             </div>
         </main>
     </div>

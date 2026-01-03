@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart, ListChecks, ChevronDown, ChevronUp } from 'lucide-react';
 import { ViewState, AssetContext } from '../types';
@@ -21,11 +22,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
     { id: ViewState.UPLOAD, label: 'Import CSV', icon: <UploadCloud size={20} /> },
   ];
 
+  // Filter menu items based on context
+  const filteredMenuItems = menuItems.filter(item => {
+      if (currentContext === 'MUTUAL_FUNDS') {
+          return [ViewState.DASHBOARD, ViewState.HOLDINGS].includes(item.id);
+      }
+      return true;
+  });
+
   const renderAssetButton = (label: string, context: AssetContext) => {
       const isActive = currentContext === context;
       return (
         <button 
-            onClick={() => setContext(context)}
+            onClick={() => {
+                setContext(context);
+                // Reset to Dashboard if current view is not available in new context
+                if (context === 'MUTUAL_FUNDS' && ![ViewState.DASHBOARD, ViewState.HOLDINGS].includes(currentView)) {
+                    setView(ViewState.DASHBOARD);
+                }
+            }}
             className={`w-full flex items-center justify-between group cursor-pointer transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
         >
             <span className={`text-sm font-medium transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
@@ -56,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
       </div>
       
       <nav className="flex-1 p-4 space-y-2 relative z-10">
-        {menuItems.map((item) => (
+        {filteredMenuItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setView(item.id)}
@@ -82,6 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
             
             <div className="space-y-4">
                 {renderAssetButton('Indian Equity', 'INDIAN_EQUITY')}
+                {renderAssetButton('Mutual Funds', 'MUTUAL_FUNDS')}
 
                 {showAccounts && (
                     <div className="space-y-4 pt-2 animate-fade-in border-t border-white/5">
