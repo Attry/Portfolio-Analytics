@@ -2,7 +2,7 @@
 import React from 'react';
 import { useConsolidatedData } from '../../hooks/useConsolidatedData';
 import { Wallet, TrendingUp, Landmark, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const NetWorthView: React.FC = () => {
     const { 
@@ -128,16 +128,10 @@ export const NetWorthView: React.FC = () => {
                                 <Tooltip 
                                     contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#333', borderRadius: '8px' }}
                                     itemStyle={{ color: '#fff' }}
-                                    formatter={(value: number) => [`${((value / netAssetValue) * 100).toFixed(2)}%`, formatCurrency(value)]}
-                                />
-                                <Legend 
-                                    verticalAlign="middle" 
-                                    align="right"
-                                    layout="vertical"
-                                    iconType="circle"
-                                    formatter={(value, entry: any) => (
-                                        <span className="text-gray-300 font-medium ml-2 text-sm">{value}</span>
-                                    )}
+                                    formatter={(value: number, name: string) => [
+                                        `${formatCurrency(value)} (${((value / netAssetValue) * 100).toFixed(2)}%)`, 
+                                        name
+                                    ]}
                                 />
                             </PieChart>
                         </ResponsiveContainer>

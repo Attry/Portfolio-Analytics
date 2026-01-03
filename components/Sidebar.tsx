@@ -96,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
         )}
 
         <aside 
-            className={`w-64 glass-panel border-r border-border flex flex-col h-screen fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out group/sidebar
+            className={`w-64 glass-panel border-r border-border flex flex-col h-[100dvh] fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out group/sidebar
                 ${mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
                 md:translate-x-0
                 ${isAutoHide ? 'md:-translate-x-[calc(100%-20px)] md:hover:translate-x-0 md:shadow-none md:hover:shadow-[0_0_40px_rgba(var(--primary-color),0.2)]' : ''}
@@ -121,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
         </button>
 
         {/* TradeView Button -> Navigates to Net Worth Overview */}
-        <div className="p-6 border-b border-white/5 relative z-10">
+        <div className="p-6 border-b border-white/5 relative z-10 shrink-0">
             <button 
                 onClick={() => { setView(ViewState.NET_WORTH); setMobileOpen(false); }}
                 className="flex items-center gap-3 w-full group hover:bg-white/5 p-2 -ml-2 rounded-xl transition-all"
@@ -138,14 +138,43 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
             </button>
         </div>
         
-        {/* Standard Menu */}
-        {currentView !== ViewState.NET_WORTH && (
-            <nav className="flex-1 p-4 space-y-2 relative z-10 animate-fade-in overflow-y-auto">
+        {/* Scrollable Nav Area */}
+        <nav className="flex-1 p-4 space-y-2 relative z-10 animate-fade-in overflow-y-auto custom-scrollbar">
+            
+            {/* Asset Context Switcher */}
+            <div className="mb-6 pb-4 border-b border-white/5">
+                <div className="glass-card rounded-xl p-3 border border-white/5 shadow-md">
+                    <div className="space-y-1">
+                        <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Asset Class</p>
+                        {/* Current Asset */}
+                        {renderAssetButton(currentAssetItem.label, currentAssetItem.context, true)}
+
+                        {/* Dropdown for other assets */}
+                        {showAssetsMenu && (
+                            <div className="pt-2 animate-fade-in border-t border-white/5 mt-2">
+                                {otherAssets.map(asset => renderAssetButton(asset.label, asset.context))}
+                            </div>
+                        )}
+                    </div>
+
+                    <button 
+                        onClick={() => setShowAssetsMenu(!showAssetsMenu)}
+                        className="w-full mt-2 pt-2 border-t border-white/10 text-[11px] font-bold text-primary-glow hover:text-white transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
+                    >
+                        {showAssetsMenu ? 'Show Less' : 'Switch Asset'}
+                        {showAssetsMenu ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Standard Menu Items */}
+            <div>
+                <p className="px-4 text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2">Views</p>
                 {filteredMenuItems.map((item) => (
                 <button
                     key={item.id}
                     onClick={() => handleViewChange(item.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group ${
+                    className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group mb-2 ${
                     currentView === item.id
                         ? 'bg-primary/10 text-white border border-primary/30 shadow-[0_0_10px_rgba(var(--primary-color),0.2)]'
                         : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -160,38 +189,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
                     )}
                 </button>
                 ))}
-            </nav>
-        )}
-
-        {/* Asset Context Switcher */}
-        <div className={`p-4 ${currentView !== ViewState.NET_WORTH ? 'border-t' : 'mt-auto'} border-white/5 relative z-10`}>
-            <div className="glass-card rounded-xl p-4 border border-white/5 shadow-lg">
-                
-                <div className="space-y-1">
-                    {/* 1. Current Asset (Always Visible) */}
-                    <div className="mb-2">
-                        <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Current Asset</p>
-                        {renderAssetButton(currentAssetItem.label, currentAssetItem.context, true)}
-                    </div>
-
-                    {/* 2. Other Assets Toggle */}
-                    {showAssetsMenu && (
-                        <div className="pt-2 animate-fade-in border-t border-white/5 mt-2 max-h-40 overflow-y-auto custom-scrollbar">
-                            <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Switch To</p>
-                            {otherAssets.map(asset => renderAssetButton(asset.label, asset.context))}
-                        </div>
-                    )}
-                </div>
-
-                <button 
-                    onClick={() => setShowAssetsMenu(!showAssetsMenu)}
-                    className="w-full mt-2 pt-2 border-t border-white/10 text-[11px] font-bold text-primary-glow hover:text-white transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
-                >
-                    {showAssetsMenu ? 'Close List' : 'Change Asset'}
-                    {showAssetsMenu ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                </button>
             </div>
-        </div>
+        </nav>
+
         </aside>
     </>
   );

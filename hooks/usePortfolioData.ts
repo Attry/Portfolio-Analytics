@@ -63,14 +63,22 @@ export const usePortfolioData = (context: AssetContext) => {
     // Cash Specific State
     const [cashHoldings, setCashHoldings] = useState<CashHolding[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.CASH_HOLDINGS) || '[]'));
     
-    // Global Market Date
-    const [globalMarketDate, setGlobalMarketDate] = useState(() => localStorage.getItem('GLOBAL_MARKET_DATE') || new Date().toISOString().split('T')[0]);
+    // Global Market Date - Defaults to Today (Local Time)
+    const [globalMarketDate, setGlobalMarketDate] = useState(() => {
+        const saved = localStorage.getItem('GLOBAL_MARKET_DATE');
+        if (saved) return saved;
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    });
 
     const [summary, setSummary] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.SUMMARY) || '{}'));
     const [sheetId, setSheetId] = useState<string>(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.SHEET_ID);
         if (saved) {
-             try { return JSON.parse(saved); } catch(e) { return saved; }
+             try { return JSON.parse(saved) as string; } catch(e) { return saved; }
         }
         if (context === 'INTERNATIONAL_EQUITY') return "1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY";
         if (context === 'MUTUAL_FUNDS') return "LINKED_TO_PUB_URL_MF"; 
