@@ -126,13 +126,13 @@ export const parseMutualFundCSV = (content: string): ParseResult<any[]> => {
         const headers = rawRows[headerIdx];
         const rows = rawRows.slice(headerIdx + 1);
         
-        const idxDate = getColIndex(headers, ['Date', 'SIP Date', 'Investment Date']);
-        const idxFund = getColIndex(headers, ['Fund', 'Scheme Name', 'Description']);
+        const idxDate = getColIndex(headers, ['Date', 'SIP Date', 'Investment Date', 'Start Date', 'Purchase Date']);
+        const idxFund = getColIndex(headers, ['Fund', 'Scheme Name', 'Description', 'Scheme']);
         const idxNAV = getColIndex(headers, ['NAV']); // This is usually Avg Cost NAV or Purchase NAV in this context
-        const idxQty = getColIndex(headers, ['Qty', 'Units']);
-        const idxValue = getColIndex(headers, ['Value', 'Invested Value', 'Cost Value']);
-        const idxCurNAV = getColIndex(headers, ['Current NAV', 'Market NAV']);
-        const idxCurVal = getColIndex(headers, ['Current Value', 'Market Value']);
+        const idxQty = getColIndex(headers, ['Qty', 'Units', 'Quantity']);
+        const idxValue = getColIndex(headers, ['Value', 'Invested Value', 'Cost Value', 'Amount Invested']);
+        const idxCurNAV = getColIndex(headers, ['Current NAV', 'Market NAV', 'Latest NAV']);
+        const idxCurVal = getColIndex(headers, ['Current Value', 'Market Value', 'Present Value']);
         
         const holdings = rows.map(row => {
             const fund = clean(row[idxFund] || '');
