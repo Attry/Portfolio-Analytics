@@ -542,7 +542,24 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
     const finalHoldings = portfolioHoldings.map(h => ({
         ...h,
         portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0
-    })).sort((a, b) => b.portfolioPct - a.portfolioPct);
+    }));
+
+    if (cashBalance > 0) {
+        finalHoldings.push({
+            ticker: 'CASH BALANCE',
+            qty: 1,
+            invested: cashBalance,
+            unrealized: 0,
+            realized: 0,
+            netReturnPct: 0,
+            marketValue: cashBalance,
+            daysHeld: 0,
+            isLive: true,
+            portfolioPct: currentValue > 0 ? (cashBalance / currentValue) * 100 : 0
+        });
+    }
+
+    finalHoldings.sort((a, b) => b.portfolioPct - a.portfolioPct);
 
     let xirr = 0;
     if (trades.length > 0) {
@@ -1405,26 +1422,35 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Avg Price</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Invested</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Current Value</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Position</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">Holding Days</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">P&L</th>
                                 <th className="p-4 text-xs font-bold text-gray-400 uppercase text-right">% Return</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {metrics.holdings.map((h, i) => (
-                                <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
-                                    <td className="p-4 font-medium text-white group-hover:text-primary-glow transition-colors">{h.ticker}</td>
-                                    <td className="p-4 text-gray-300 text-right">{h.qty}</td>
-                                    <td className="p-4 text-gray-300 text-right">{currencySymbol}{(h.invested / h.qty).toFixed(2)}</td>
+                            {metrics.holdings.map((h, i) => {
+                                const isCash = h.ticker === 'CASH BALANCE';
+                                return (
+                                <tr key={i} className={`border-b border-white/5 hover:bg-white/5 transition-colors group ${isCash ? 'bg-white/5' : ''}`}>
+                                    <td className="p-4 font-medium text-white group-hover:text-primary-glow transition-colors flex items-center gap-2">
+                                        {isCash && <Wallet className="w-4 h-4 text-gray-400" />}
+                                        {h.ticker}
+                                    </td>
+                                    <td className="p-4 text-gray-300 text-right">{isCash ? '-' : h.qty}</td>
+                                    <td className="p-4 text-gray-300 text-right">{isCash ? '-' : `${currencySymbol}${(h.invested / h.qty).toFixed(2)}`}</td>
                                     <td className="p-4 text-gray-300 text-right">{currencySymbol}{h.invested.toLocaleString()}</td>
                                     <td className="p-4 text-white font-medium text-right">{currencySymbol}{h.marketValue.toLocaleString()}</td>
+                                    <td className="p-4 text-gray-300 text-right">{h.portfolioPct.toFixed(2)}%</td>
+                                    <td className="p-4 text-gray-300 text-right">{isCash ? '-' : `${h.daysHeld} Days`}</td>
                                     <td className={`p-4 text-right font-bold ${h.unrealized >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        {h.unrealized >= 0 ? '+' : ''}{currencySymbol}{h.unrealized.toLocaleString()}
+                                        {isCash ? '-' : `${h.unrealized >= 0 ? '+' : ''}${currencySymbol}${h.unrealized.toLocaleString()}`}
                                     </td>
                                     <td className={`p-4 text-right font-bold ${h.netReturnPct >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        {h.netReturnPct.toFixed(2)}%
+                                        {isCash ? '-' : `${h.netReturnPct.toFixed(2)}%`}
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                     </table>
                 </div>

@@ -5,11 +5,12 @@ interface StatsCardProps {
   title: string;
   value: string;
   change?: string;
+  changeLabel?: string;
   isPositive?: boolean;
   icon: React.ReactNode;
 }
 
-export const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, isPositive, icon }) => {
+export const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, changeLabel, isPositive, icon }) => {
   return (
     <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
       {/* Hover Gradient Background */}
@@ -34,7 +35,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, isPo
             {isPositive ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
             {change}
           </span>
-          <span className="text-gray-500 text-xs ml-2 font-medium">vs last month</span>
+          <span className="text-gray-500 text-xs ml-2 font-medium">{changeLabel || 'vs last month'}</span>
         </div>
       )}
     </div>
