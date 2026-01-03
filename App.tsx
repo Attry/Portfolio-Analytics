@@ -601,7 +601,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   const tickerDistribution = useMemo(() => {
     if (metrics.holdings.length > 0) {
         return metrics.holdings
-            .map(h => ({ name: h.ticker, value: h.marketValue || 0, pct: h.portfolioPct || 0 }))
+            .map(h => ({ name: h.ticker, value: h.marketValue || 0 }))
             .sort((a, b) => b.value - a.value);
     }
     return [];
@@ -1305,9 +1305,6 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                  <button onClick={handleGoogleSheetFetch} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors" title="Sync Market Data">
                     <RefreshCw size={18} className={`text-primary-glow ${isFetchingSheet ? 'animate-spin' : ''}`} />
                  </button>
-                 <button onClick={clearAllData} className="p-2 bg-danger/10 hover:bg-danger/20 rounded-lg border border-danger/20 transition-colors text-danger" title="Clear Data">
-                    <Trash2 size={18} />
-                 </button>
             </div>
         </div>
 
@@ -1367,7 +1364,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                     <Tooltip 
                                         contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#333', borderRadius: '8px' }}
                                         itemStyle={{ color: '#fff' }}
-                                        formatter={(value: number, name: string, props: any) => [`${currencySymbol}${value.toLocaleString()} (${props.payload.pct.toFixed(2)}%)`, name]}
+                                        formatter={(value: number) => `${currencySymbol}${value.toLocaleString()}`}
                                     />
                                 </PieChart>
                             </ResponsiveContainer>
