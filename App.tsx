@@ -42,7 +42,8 @@ import {
   FileText,
   ArrowUpRight,
   ArrowDownRight,
-  RotateCcw
+  RotateCcw,
+  PieChart as PieChartIcon
 } from 'lucide-react';
 import {
   BarChart,
@@ -54,8 +55,7 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
-  Legend
+  Cell
 } from 'recharts';
 
 // New Vibrant Palette
@@ -601,7 +601,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   const tickerDistribution = useMemo(() => {
     if (metrics.holdings.length > 0) {
         return metrics.holdings
-            .map(h => ({ name: h.ticker, value: h.marketValue || 0 }))
+            .map(h => ({ name: h.ticker, value: h.marketValue || 0, pct: h.portfolioPct || 0 }))
             .sort((a, b) => b.value - a.value);
     }
     return [];
@@ -1315,9 +1315,8 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                         title="Current Value" 
                         value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
                         icon={<Wallet />}
-                        change={`${Math.abs(totalCapital > 0 ? ((metrics.netRealizedPnL + metrics.unrealizedPnL + metrics.totalDividends) / totalCapital) * 100 : 0).toFixed(2)}%`}
-                        changeLabel="Net Return"
-                        isPositive={(totalCapital > 0 ? ((metrics.netRealizedPnL + metrics.unrealizedPnL + metrics.totalDividends) / totalCapital) * 100 : 0) >= 0}
+                        change={metrics.totalInvested > 0 ? `${((metrics.unrealizedPnL / metrics.totalInvested) * 100).toFixed(2)}%` : undefined}
+                        isPositive={metrics.unrealizedPnL >= 0}
                     />
                     <StatsCard 
                         title="Total Invested" 
@@ -1342,7 +1341,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                     {/* Allocation Chart */}
                     <div className="glass-card rounded-2xl p-6 lg:col-span-1 border border-white/5">
                         <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                            <PieChart className="w-5 h-5 text-accent-cyan" /> Allocation
+                            <PieChartIcon className="w-5 h-5 text-accent-cyan" /> Allocation
                         </h3>
                         <div className="h-[300px] flex items-center justify-center">
                             <ResponsiveContainer width="100%" height="100%">
@@ -1363,9 +1362,8 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                                     <Tooltip 
                                         contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#333', borderRadius: '8px' }}
                                         itemStyle={{ color: '#fff' }}
-                                        formatter={(value: number) => `${currencySymbol}${value.toLocaleString()}`}
+                                        formatter={(value: number, name: string, props: any) => [`${currencySymbol}${value.toLocaleString()} (${props.payload.pct.toFixed(2)}%)`, name]}
                                     />
-                                    <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
