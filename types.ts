@@ -56,6 +56,12 @@ export interface WatchlistItem {
   researchLink: string;
 }
 
+export interface CashHolding {
+  id: string;
+  account: string;
+  value: number;
+}
+
 export interface PortfolioSummary {
   totalInvested: number;
   currentValue: number;

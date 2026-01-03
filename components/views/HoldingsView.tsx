@@ -1,15 +1,74 @@
 
 import React from 'react';
-import { Wallet } from 'lucide-react';
+import { Wallet, Trash2 } from 'lucide-react';
 import { AssetContext } from '../../types';
 
 interface HoldingsViewProps {
   metrics: any;
   currencySymbol: string;
   context: AssetContext;
+  onUpdateHolding?: (id: string, field: string, value: any) => void;
+  onDeleteHolding?: (id: string) => void;
 }
 
-export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySymbol, context }) => {
+export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySymbol, context, onUpdateHolding, onDeleteHolding }) => {
+    
+    if (context === 'CASH_EQUIVALENTS') {
+        return (
+            <div className="glass-card rounded-2xl overflow-hidden animate-fade-in flex flex-col h-full">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-white/5 text-gray-400 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 backdrop-blur-xl">
+                            <tr>
+                                <th className="px-6 py-4">Account</th>
+                                <th className="px-6 py-4 text-right">Value ({currencySymbol})</th>
+                                <th className="px-6 py-4 text-center w-16">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {metrics.holdings.map((h: any) => (
+                                <tr key={h.id} className="hover:bg-white/5 transition-colors text-sm group">
+                                    <td className="px-6 py-4">
+                                        <input 
+                                            type="text" 
+                                            value={h.account}
+                                            onChange={(e) => onUpdateHolding && onUpdateHolding(h.id, 'account', e.target.value)}
+                                            className="bg-transparent border-b border-transparent focus:border-primary/50 outline-none text-white font-bold w-full transition-colors"
+                                        />
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <input 
+                                            type="number" 
+                                            value={h.value}
+                                            onChange={(e) => onUpdateHolding && onUpdateHolding(h.id, 'value', parseFloat(e.target.value))}
+                                            className="bg-transparent border-b border-transparent focus:border-primary/50 outline-none text-success font-mono font-bold text-right w-full transition-colors"
+                                        />
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <button 
+                                            onClick={() => onDeleteHolding && onDeleteHolding(h.id)}
+                                            className="p-2 text-gray-500 hover:text-danger hover:bg-danger/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Delete Account"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {metrics.holdings.length === 0 && (
+                                <tr>
+                                    <td colSpan={3} className="text-center py-10 text-gray-500">
+                                        No cash accounts found. Use "Add Salary" on Dashboard to get started.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
+
     const showRealized = context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF';
 
     return (

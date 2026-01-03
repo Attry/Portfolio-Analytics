@@ -1,6 +1,6 @@
 
-import React, { useMemo } from 'react';
-import { Wallet, Briefcase, TrendingUp, Activity, PieChart as PieChartIcon, BarChart3, Layers } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Wallet, Briefcase, TrendingUp, Activity, PieChart as PieChartIcon, BarChart3, Layers, Plus, Coins, X } from 'lucide-react';
 import { StatsCard } from '../StatsCard';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { AssetContext } from '../../types';
@@ -11,14 +11,27 @@ interface DashboardViewProps {
   metrics: any;
   currencySymbol: string;
   context: AssetContext;
+  onAddSalary?: (account: string, amount: number) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencySymbol, context }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencySymbol, context, onAddSalary }) => {
+    
+    const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
+    const [salaryAccount, setSalaryAccount] = useState('');
+    const [salaryAmount, setSalaryAmount] = useState('');
+
+    const handleAddSalary = () => {
+        if (!salaryAccount || !salaryAmount || !onAddSalary) return;
+        onAddSalary(salaryAccount, parseFloat(salaryAmount));
+        setIsSalaryModalOpen(false);
+        setSalaryAccount('');
+        setSalaryAmount('');
+    };
+
     const netTotalReturns = metrics.grossRealizedPnL + metrics.unrealizedPnL + metrics.totalDividends - metrics.charges;
     const totalCapitalForReturns = metrics.totalInvested + metrics.cashBalance;
     const netReturnPct = totalCapitalForReturns > 0 ? (netTotalReturns / totalCapitalForReturns) * 100 : 0;
     
-    // For Mutual Funds and Gold ETF, Return % is just based on Unrealized P&L vs Invested as realized P&L is 0
     const displayReturnPct = (context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF')
         ? (metrics.totalInvested > 0 ? (metrics.unrealizedPnL / metrics.totalInvested) * 100 : 0)
         : netReturnPct;
@@ -26,7 +39,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
     const tickerDistribution = useMemo(() => {
         if (metrics.holdings.length > 0) {
             return metrics.holdings
-                .map((h: any) => ({ name: h.ticker, value: h.marketValue || 0 }))
+                .map((h: any) => ({ name: h.ticker || h.account, value: h.marketValue || h.value || 0 }))
                 .sort((a: any, b: any) => b.value - a.value);
         }
         return [];
@@ -61,6 +74,90 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                         isPositive={metrics.unrealizedPnL >= 0}
                     />
                 </div>
+            </div>
+        );
+    }
+
+    // Cash Equivalents View
+    if (context === 'CASH_EQUIVALENTS') {
+        // Collect existing accounts for datalist
+        const accounts = Array.from(new Set(metrics.holdings.map((h:any) => h.account)));
+
+        return (
+            <div className="space-y-6 animate-fade-in relative">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2">
+                        <div className="glass-card rounded-2xl p-8 flex items-center justify-between border border-white/5 relative overflow-hidden">
+                             <div className="absolute inset-0 bg-gradient-to-r from-success/10 to-transparent pointer-events-none"></div>
+                             <div>
+                                 <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Cash Value</p>
+                                 <h1 className="text-5xl font-bold text-white tracking-tight">{currencySymbol}{metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</h1>
+                             </div>
+                             <div className="p-4 bg-success/10 rounded-2xl border border-success/20">
+                                 <Coins className="w-10 h-10 text-success" />
+                             </div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex flex-col justify-center">
+                        <button 
+                            onClick={() => setIsSalaryModalOpen(true)}
+                            className="w-full py-6 bg-primary hover:bg-primary-glow text-white rounded-2xl font-bold text-lg transition-all shadow-[0_0_20px_rgba(112,66,248,0.3)] hover:shadow-[0_0_30px_rgba(112,66,248,0.5)] flex items-center justify-center gap-3 border border-primary/50"
+                        >
+                            <Plus className="w-6 h-6" /> Add Salary
+                        </button>
+                    </div>
+                </div>
+
+                {/* Salary Modal */}
+                {isSalaryModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4">
+                        <div className="bg-[#151925] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+                            <button 
+                                onClick={() => setIsSalaryModalOpen(false)}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                            >
+                                <X size={20} />
+                            </button>
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <Plus className="w-5 h-5 text-success" /> Add to Cash
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Account Name</label>
+                                    <input 
+                                        list="accounts" 
+                                        type="text" 
+                                        value={salaryAccount}
+                                        onChange={(e) => setSalaryAccount(e.target.value)}
+                                        placeholder="e.g. HDFC Salary, Savings..."
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                                    />
+                                    <datalist id="accounts">
+                                        {accounts.map((acc: any) => <option key={acc} value={acc} />)}
+                                    </datalist>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Amount ({currencySymbol})</label>
+                                    <input 
+                                        type="number" 
+                                        value={salaryAmount}
+                                        onChange={(e) => setSalaryAmount(e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-primary/50 transition-colors font-mono text-lg"
+                                    />
+                                </div>
+                                <button 
+                                    onClick={handleAddSalary}
+                                    className="w-full py-3 bg-success/20 hover:bg-success/30 text-success border border-success/30 rounded-xl font-bold mt-2 transition-all"
+                                >
+                                    Confirm Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }

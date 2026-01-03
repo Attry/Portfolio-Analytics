@@ -72,7 +72,8 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   
   const {
       trades, metrics, watchlist, priceData, uploadMeta, sheetId, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL, globalMarketDate,
-      processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate
+      processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate,
+      addSalary, updateCashHolding, deleteCashHolding
   } = usePortfolioData(context);
 
   const [isFetchingSheet, setIsFetchingSheet] = useState(false);
@@ -167,12 +168,12 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
             </div>
         </div>
 
-        {currentView === ViewState.DASHBOARD && <DashboardView metrics={metrics} currencySymbol={currencySymbol} context={context} />}
-        {currentView === ViewState.HOLDINGS && <HoldingsView metrics={metrics} currencySymbol={currencySymbol} context={context} />}
+        {currentView === ViewState.DASHBOARD && <DashboardView metrics={metrics} currencySymbol={currencySymbol} context={context} onAddSalary={addSalary} />}
+        {currentView === ViewState.HOLDINGS && <HoldingsView metrics={metrics} currencySymbol={currencySymbol} context={context} onUpdateHolding={updateCashHolding} onDeleteHolding={deleteCashHolding} />}
         
-        {/* Render restricted views only if not Mutual Funds/Gold ETF (just extra safety, sidebar handles nav) */}
-        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && currentView === ViewState.TRANSACTIONS && <TransactionsView trades={trades} metrics={metrics} currencySymbol={currencySymbol} />}
-        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && currentView === ViewState.WATCHLIST && (
+        {/* Render restricted views only if not Mutual Funds/Gold ETF/Cash (just extra safety, sidebar handles nav) */}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.TRANSACTIONS && <TransactionsView trades={trades} metrics={metrics} currencySymbol={currencySymbol} />}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.WATCHLIST && (
             <WatchlistView 
                 watchlist={watchlist} 
                 priceData={priceData} 
@@ -182,9 +183,9 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                 onUpdate={updateWatchlistItem}
             />
         )}
-        {/* AI Insights relies on trades, so hidden for MF/Gold */}
-        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && currentView === ViewState.AI_INSIGHTS && <AIInsightsView trades={trades} />}
-        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && currentView === ViewState.UPLOAD && (
+        {/* AI Insights relies on trades, so hidden for MF/Gold/Cash */}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.AI_INSIGHTS && <AIInsightsView trades={trades} />}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.UPLOAD && (
             <UploadView 
                 context={context} 
                 uploadMeta={uploadMeta} 

@@ -1,6 +1,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
-import { AssetContext, Trade, PnLRecord, LedgerRecord, DividendRecord, WatchlistItem, ViewState } from '../types';
+import { AssetContext, Trade, PnLRecord, LedgerRecord, DividendRecord, WatchlistItem, ViewState, CashHolding } from '../types';
 import { calculateFIFO, calculateXIRR, PerStockData } from '../utils/financials';
 import { parseMarketDataCSV, parseIndianEquity, parseInternationalEquity, parseMutualFundCSV, parseGoldETFCSV, ParseResult } from '../services/csvParsers';
 
@@ -34,7 +34,8 @@ const getStorageKeys = (context: AssetContext) => {
         SUMMARY: `${prefix}_summary`,
         SHEET_ID: `${prefix}_sheet_id`,
         MF_HOLDINGS: `${prefix}_holdings`, 
-        GOLD_HOLDINGS: `${prefix}_holdings` // Reuse suffix but unique prefix
+        GOLD_HOLDINGS: `${prefix}_holdings`,
+        CASH_HOLDINGS: `${prefix}_holdings` 
     };
 };
 
@@ -59,9 +60,10 @@ export const usePortfolioData = (context: AssetContext) => {
     const [mfHoldings, setMfHoldings] = useState<any[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.MF_HOLDINGS) || '[]'));
     // Gold Specific State
     const [goldHoldings, setGoldHoldings] = useState<any[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.GOLD_HOLDINGS) || '[]'));
+    // Cash Specific State
+    const [cashHoldings, setCashHoldings] = useState<CashHolding[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.CASH_HOLDINGS) || '[]'));
     
-    // Global Market Date (shared preference but handled here for convenience, or unique per context if desired, prompt implies global)
-    // Using a shared key for the "Reference Date"
+    // Global Market Date
     const [globalMarketDate, setGlobalMarketDate] = useState(() => localStorage.getItem('GLOBAL_MARKET_DATE') || new Date().toISOString().split('T')[0]);
 
     const [summary, setSummary] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.SUMMARY) || '{}'));
@@ -103,7 +105,6 @@ export const usePortfolioData = (context: AssetContext) => {
     const updateGlobalDate = (date: string) => {
         setGlobalMarketDate(date);
         localStorage.setItem('GLOBAL_MARKET_DATE', date);
-        // Also update local meta to keep sync for Market Data Uploads
         updateMeta({ marketDate: date });
     }
 
@@ -111,7 +112,7 @@ export const usePortfolioData = (context: AssetContext) => {
     const clearAllData = () => {
         if (!confirm(`Clear all data for ${context}?`)) return;
         Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
-        setTrades([]); setPnlData([]); setLedgerData([]); setDividendData([]); setPriceData({}); setWatchlist([]); setUploadMeta({}); setSummary({}); setMfHoldings([]); setGoldHoldings([]);
+        setTrades([]); setPnlData([]); setLedgerData([]); setDividendData([]); setPriceData({}); setWatchlist([]); setUploadMeta({}); setSummary({}); setMfHoldings([]); setGoldHoldings([]); setCashHoldings([]);
         alert('Data cleared.');
     };
 
@@ -134,6 +135,35 @@ export const usePortfolioData = (context: AssetContext) => {
         persist(STORAGE_KEYS.WATCHLIST, updated);
     };
 
+    // -- Cash Actions --
+    const addSalary = (account: string, amount: number) => {
+        const existingIndex = cashHoldings.findIndex(c => c.account.toLowerCase() === account.toLowerCase());
+        let updatedCashHoldings;
+        if (existingIndex >= 0) {
+            updatedCashHoldings = [...cashHoldings];
+            updatedCashHoldings[existingIndex] = {
+                ...updatedCashHoldings[existingIndex],
+                value: updatedCashHoldings[existingIndex].value + amount
+            };
+        } else {
+            updatedCashHoldings = [...cashHoldings, { id: Math.random().toString(36).substr(2, 9), account, value: amount }];
+        }
+        setCashHoldings(updatedCashHoldings);
+        persist(STORAGE_KEYS.CASH_HOLDINGS, updatedCashHoldings);
+    };
+
+    const updateCashHolding = (id: string, field: keyof CashHolding, value: any) => {
+        const updated = cashHoldings.map(c => c.id === id ? { ...c, [field]: value } : c);
+        setCashHoldings(updated);
+        persist(STORAGE_KEYS.CASH_HOLDINGS, updated);
+    };
+
+    const deleteCashHolding = (id: string) => {
+        const updated = cashHoldings.filter(c => c.id !== id);
+        setCashHoldings(updated);
+        persist(STORAGE_KEYS.CASH_HOLDINGS, updated);
+    };
+
     // -- File Processing --
     const processFile = (content: string, type: UploadType, marketDate?: string) => {
         let result: ParseResult<any> = { success: false, message: "No parser matched." };
@@ -153,6 +183,7 @@ export const usePortfolioData = (context: AssetContext) => {
                 updateMeta({ market: new Date().toISOString() });
             }
         } else {
+             // ... Existing generic parsing logic ...
              const lines = content.split('\n').filter(line => line.trim() !== '');
              setLastUploadPreview(lines.slice(0, 5).map(l => l.split(',')));
 
@@ -204,6 +235,24 @@ export const usePortfolioData = (context: AssetContext) => {
     const metrics = useMemo(() => {
         const referenceDate = new Date(globalMarketDate || new Date());
 
+        if (context === 'CASH_EQUIVALENTS') {
+            const totalCash = cashHoldings.reduce((acc, c) => acc + (c.value || 0), 0);
+            return {
+                totalInvested: totalCash,
+                currentValue: totalCash,
+                unrealizedPnL: 0,
+                grossRealizedPnL: 0,
+                netRealizedPnL: 0,
+                charges: 0,
+                totalDividends: 0,
+                cashBalance: totalCash,
+                xirr: 0,
+                holdings: cashHoldings,
+                hasLiveData: true,
+                tradePerformance: {}
+            };
+        }
+
         if (context === 'MUTUAL_FUNDS') {
              const totalInvested = mfHoldings.reduce((acc, h) => acc + h.invested, 0);
              const currentValue = mfHoldings.reduce((acc, h) => acc + h.marketValue, 0);
@@ -218,11 +267,8 @@ export const usePortfolioData = (context: AssetContext) => {
              const finalHoldings = mfHoldings.map(h => {
                  let daysHeld = 0;
                  if (h.latestBuyDate) {
-                     // Difference in milliseconds
                      const diff = referenceDate.getTime() - new Date(h.latestBuyDate).getTime();
-                     // Convert to days
                      daysHeld = Math.floor(diff / (1000 * 3600 * 24));
-                     // Prevent negative hold days if reference date is before buy date (user error on date select)
                      if (daysHeld < 0) daysHeld = 0;
                  }
                  
@@ -369,11 +415,12 @@ export const usePortfolioData = (context: AssetContext) => {
             hasLiveData: Object.keys(priceData).length > 0,
             tradePerformance
         };
-    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings, goldHoldings, globalMarketDate]);
+    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings, goldHoldings, cashHoldings, globalMarketDate]);
 
     return {
         trades, pnlData, ledgerData, dividendData, priceData, watchlist, uploadMeta, sheetId,
         metrics, lastUploadPreview, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL, globalMarketDate,
-        processFile, clearAllData, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate
+        processFile, clearAllData, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate,
+        addSalary, updateCashHolding, deleteCashHolding
     };
 };
