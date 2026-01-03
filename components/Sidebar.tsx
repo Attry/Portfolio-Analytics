@@ -11,7 +11,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentContext, setContext }) => {
-  const [showAccounts, setShowAccounts] = useState(true);
+  const [showAssetsMenu, setShowAssetsMenu] = useState(false);
 
   const menuItems = [
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -30,12 +30,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
       return true;
   });
 
-  const renderAssetButton = (label: string, context: AssetContext) => {
+  const renderAssetButton = (label: string, context: AssetContext, isMain = false) => {
       const isActive = currentContext === context && currentView !== ViewState.NET_WORTH;
       return (
         <button 
+            key={context}
             onClick={() => {
                 setContext(context);
+                setShowAssetsMenu(false); // Auto-hide menu on selection
+                
                 // Reset to Dashboard if current view is not available in new context
                 if (currentView === ViewState.NET_WORTH) {
                     setView(ViewState.DASHBOARD);
@@ -44,20 +47,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
                     setView(ViewState.DASHBOARD);
                 }
             }}
-            className={`w-full flex items-center justify-between group cursor-pointer transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
+            className={`w-full flex items-center justify-between group cursor-pointer transition-all duration-200 mb-1 px-2 py-2 rounded-lg ${isActive && !isMain ? 'bg-white/10' : 'hover:bg-white/5'}`}
         >
             <span className={`text-sm font-medium transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
                 {label}
             </span>
-            <span className="flex h-2.5 w-2.5 relative">
-              {isActive && (
-                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-              )}
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isActive ? 'bg-success' : 'bg-gray-700'}`}></span>
-            </span>
+            {isActive && (
+                <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                </span>
+            )}
         </button>
       );
   };
+
+  const allAssets: { label: string; context: AssetContext }[] = [
+      { label: 'Indian Equity', context: 'INDIAN_EQUITY' },
+      { label: 'Mutual Funds', context: 'MUTUAL_FUNDS' },
+      { label: 'Gold ETF', context: 'GOLD_ETF' },
+      { label: 'International Equity', context: 'INTERNATIONAL_EQUITY' },
+      { label: 'Cash Equivalents', context: 'CASH_EQUIVALENTS' }
+  ];
+
+  const currentAssetItem = allAssets.find(a => a.context === currentContext) || allAssets[0];
+  const otherAssets = allAssets.filter(a => a.context !== currentContext);
 
   return (
     <aside className="w-64 glass-panel border-r border-border flex flex-col h-screen fixed left-0 top-0 z-50">
@@ -111,27 +125,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
 
       {/* Asset Context Switcher */}
       <div className={`p-4 ${currentView !== ViewState.NET_WORTH ? 'border-t' : 'mt-auto'} border-white/5 relative z-10`}>
-        <div className="bg-gradient-to-br from-white/5 to-transparent rounded-xl p-4 border border-white/5">
+        <div className="bg-gradient-to-br from-white/5 to-transparent rounded-xl p-4 border border-white/5 shadow-lg">
             
-            <div className="space-y-4">
-                {renderAssetButton('Indian Equity', 'INDIAN_EQUITY')}
-                {renderAssetButton('Mutual Funds', 'MUTUAL_FUNDS')}
-                {renderAssetButton('Gold ETF', 'GOLD_ETF')}
+            <div className="space-y-1">
+                {/* 1. Current Asset (Always Visible) */}
+                 <div className="mb-2">
+                    <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Current Asset</p>
+                    {renderAssetButton(currentAssetItem.label, currentAssetItem.context, true)}
+                 </div>
 
-                {showAccounts && (
-                    <div className="space-y-4 pt-2 animate-fade-in border-t border-white/5">
-                         {renderAssetButton('International Equity', 'INTERNATIONAL_EQUITY')}
-                         {renderAssetButton('Cash Equivalents', 'CASH_EQUIVALENTS')}
+                {/* 2. Other Assets Toggle */}
+                {showAssetsMenu && (
+                    <div className="pt-2 animate-fade-in border-t border-white/5 mt-2 max-h-40 overflow-y-auto custom-scrollbar">
+                         <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Switch To</p>
+                        {otherAssets.map(asset => renderAssetButton(asset.label, asset.context))}
                     </div>
                 )}
             </div>
 
             <button 
-                onClick={() => setShowAccounts(!showAccounts)}
-                className="w-full mt-4 pt-2 border-t border-white/10 text-[11px] font-bold text-primary-glow hover:text-white transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
+                onClick={() => setShowAssetsMenu(!showAssetsMenu)}
+                className="w-full mt-2 pt-2 border-t border-white/10 text-[11px] font-bold text-primary-glow hover:text-white transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
             >
-                {showAccounts ? 'Show Less' : 'More Assets'}
-                {showAccounts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {showAssetsMenu ? 'Close List' : 'Change Asset'}
+                {showAssetsMenu ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
         </div>
       </div>

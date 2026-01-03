@@ -262,8 +262,11 @@ export const usePortfolioData = (context: AssetContext) => {
              const charges = 0;
              const totalDividends = 0;
              const cashBalance = 0;
-             const xirr = 0; 
-
+             
+             // XIRR Calculation for MF
+             let xirr = 0;
+             const flows: { amount: number, date: Date }[] = [];
+             
              const finalHoldings = mfHoldings.map(h => {
                  let daysHeld = 0;
                  if (h.latestBuyDate) {
@@ -272,6 +275,11 @@ export const usePortfolioData = (context: AssetContext) => {
                         const diff = referenceDate.getTime() - buyDate.getTime();
                         daysHeld = Math.floor(diff / (1000 * 3600 * 24));
                         if (daysHeld < 0) daysHeld = 0;
+                        
+                        // Add to flows for XIRR (Outflow is negative invested)
+                        if (h.invested > 0) {
+                             flows.push({ amount: -h.invested, date: buyDate });
+                        }
                      }
                  }
                  
@@ -284,6 +292,13 @@ export const usePortfolioData = (context: AssetContext) => {
                     realized: 0
                  };
              }).sort((a, b) => b.portfolioPct - a.portfolioPct);
+
+             if (flows.length > 0 && currentValue > 0) {
+                 try {
+                     const val = calculateXIRR(flows, currentValue);
+                     if (!isNaN(val) && isFinite(val)) xirr = val * 100;
+                 } catch(e) { console.warn("XIRR error", e); }
+             }
 
              return {
                  totalInvested, currentValue, unrealizedPnL, grossRealizedPnL, netRealizedPnL,
@@ -303,7 +318,10 @@ export const usePortfolioData = (context: AssetContext) => {
             const charges = 0;
             const totalDividends = 0;
             const cashBalance = 0;
-            const xirr = 0; 
+            
+            // XIRR Calculation for Gold
+            let xirr = 0;
+            const flows: { amount: number, date: Date }[] = [];
 
             const finalHoldings = goldHoldings.map(h => {
                 let daysHeld = 0;
@@ -313,6 +331,11 @@ export const usePortfolioData = (context: AssetContext) => {
                         const diff = referenceDate.getTime() - buyDate.getTime();
                         daysHeld = Math.floor(diff / (1000 * 3600 * 24));
                         if (daysHeld < 0) daysHeld = 0;
+                        
+                         // Add to flows for XIRR
+                        if (h.invested > 0) {
+                             flows.push({ amount: -h.invested, date: buyDate });
+                        }
                     }
                 }
 
@@ -325,6 +348,13 @@ export const usePortfolioData = (context: AssetContext) => {
                     realized: 0
                 };
             }).sort((a, b) => b.portfolioPct - a.portfolioPct);
+
+             if (flows.length > 0 && currentValue > 0) {
+                 try {
+                     const val = calculateXIRR(flows, currentValue);
+                     if (!isNaN(val) && isFinite(val)) xirr = val * 100;
+                 } catch(e) { console.warn("XIRR error", e); }
+             }
 
             return {
                 totalInvested, currentValue, unrealizedPnL, grossRealizedPnL, netRealizedPnL,

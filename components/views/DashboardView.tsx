@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Wallet, Briefcase, TrendingUp, Activity, PieChart as PieChartIcon, BarChart3, Layers, Plus, Coins, X } from 'lucide-react';
+import { Wallet, Briefcase, TrendingUp, Activity, PieChart as PieChartIcon, BarChart3, Layers, Plus, Coins, X, Landmark } from 'lucide-react';
 import { StatsCard } from '../StatsCard';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { AssetContext } from '../../types';
@@ -29,13 +29,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
     };
 
     const netTotalReturns = metrics.grossRealizedPnL + metrics.unrealizedPnL + metrics.totalDividends - metrics.charges;
-    const totalCapitalForReturns = metrics.totalInvested + metrics.cashBalance;
-    const netReturnPct = totalCapitalForReturns > 0 ? (netTotalReturns / totalCapitalForReturns) * 100 : 0;
+    
+    // 1. Net ROI (Return on Investment) -> Denominator: Total Invested
+    const netROI = metrics.totalInvested > 0 ? (netTotalReturns / metrics.totalInvested) * 100 : 0;
+
+    // 2. Net Return (Portfolio Return) -> Denominator: Total Invested + Cash
+    const totalCapital = metrics.totalInvested + metrics.cashBalance;
+    const netReturnPct = totalCapital > 0 ? (netTotalReturns / totalCapital) * 100 : 0;
     
     const displayReturnPct = (context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF')
         ? (metrics.totalInvested > 0 ? (metrics.unrealizedPnL / metrics.totalInvested) * 100 : 0)
-        : netReturnPct;
-
+        : netReturnPct; // Use Net Return (with Cash) for the main Current Value card
+    
     const tickerDistribution = useMemo(() => {
         if (metrics.holdings.length > 0) {
             return metrics.holdings
@@ -53,7 +58,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
     if (context === 'GOLD_ETF') {
         return (
             <div className="space-y-6 animate-fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatsCard 
                         title="Current Value" 
                         value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
@@ -72,6 +77,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                         value={`${currencySymbol}${metrics.unrealizedPnL.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
                         icon={<TrendingUp />} 
                         isPositive={metrics.unrealizedPnL >= 0}
+                    />
+                     <StatsCard 
+                        title="XIRR" 
+                        value={`${metrics.xirr.toFixed(2)}%`} 
+                        icon={<Activity />} 
+                        isPositive={metrics.xirr >= 0}
                     />
                 </div>
             </div>
@@ -162,9 +173,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
         );
     }
 
+    const isEquityContext = context === 'INDIAN_EQUITY' || context === 'INTERNATIONAL_EQUITY';
+
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 ${isEquityContext ? 'xl:grid-cols-6' : 'xl:grid-cols-5'} gap-4`}>
                 <StatsCard 
                     title="Current Value" 
                     value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
@@ -178,20 +191,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                     value={`${currencySymbol}${metrics.totalInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
                     icon={<Briefcase />} 
                 />
+                
+                {/* Net Absolute Return - Only for Equity Contexts */}
+                {isEquityContext && (
+                    <StatsCard 
+                        title="Net Absolute Return" 
+                        value={`${netTotalReturns >= 0 ? '+' : ''}${currencySymbol}${Math.abs(netTotalReturns).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
+                        icon={<Coins />} 
+                        isPositive={netTotalReturns >= 0}
+                        change={`${netROI.toFixed(2)}%`}
+                        changeLabel="Net ROI"
+                    />
+                )}
+
                 <StatsCard 
                     title="Unrealized P&L" 
                     value={`${currencySymbol}${metrics.unrealizedPnL.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
                     icon={<TrendingUp />} 
                     isPositive={metrics.unrealizedPnL >= 0}
                 />
-                 {context !== 'MUTUAL_FUNDS' && (
-                    <StatsCard 
-                        title="XIRR" 
-                        value={`${metrics.xirr.toFixed(2)}%`} 
-                        icon={<Activity />} 
-                        isPositive={metrics.xirr >= 0}
-                    />
-                 )}
+                <StatsCard 
+                    title="XIRR" 
+                    value={`${metrics.xirr.toFixed(2)}%`} 
+                    icon={<Activity />} 
+                    isPositive={metrics.xirr >= 0}
+                />
                 <StatsCard 
                     title="Diversification" 
                     value={`${diversificationCount}`} 
