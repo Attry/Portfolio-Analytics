@@ -112,12 +112,14 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                                 )}
                                 <td className={`px-6 py-4 text-right font-mono font-bold ${h.unrealized >= 0 ? 'text-success' : 'text-danger'}`}>
                                     {isCash ? '-' : (
-                                        <span>
-                                            {h.unrealized >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(h.unrealized).toLocaleString('en-IN', { maximumFractionDigits: 0 })} 
-                                            <span className="ml-1 text-xs opacity-80">
+                                        <div className="flex flex-col items-end">
+                                            <span>
+                                                {h.unrealized >= 0 ? '+' : '-'}{currencySymbol}{Math.abs(h.unrealized).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                            </span>
+                                            <span className="text-xs opacity-80 mt-1">
                                                 ({h.netReturnPct >= 0 ? '+' : ''}{h.netReturnPct.toFixed(2)}%)
                                             </span>
-                                        </span>
+                                        </div>
                                     )}
                                 </td>
                             </tr>
