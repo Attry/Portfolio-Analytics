@@ -1283,6 +1283,10 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
       return [];
   };
 
+  const totalCapitalForReturns = metrics.totalInvested + metrics.cashBalance;
+  const netTotalReturns = metrics.grossRealizedPnL + metrics.unrealizedPnL + metrics.totalDividends - metrics.charges;
+  const netReturnPct = totalCapitalForReturns > 0 ? (netTotalReturns / totalCapitalForReturns) * 100 : 0;
+
   return (
     <div className="p-6 space-y-6 overflow-y-auto h-full pb-24">
         {/* Header Section */}
@@ -1315,8 +1319,9 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                         title="Current Value" 
                         value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
                         icon={<Wallet />}
-                        change={metrics.totalInvested > 0 ? `${((metrics.unrealizedPnL / metrics.totalInvested) * 100).toFixed(2)}%` : undefined}
-                        isPositive={metrics.unrealizedPnL >= 0}
+                        change={`${netReturnPct.toFixed(2)}%`}
+                        changeLabel="Net Return"
+                        isPositive={netReturnPct >= 0}
                     />
                     <StatsCard 
                         title="Total Invested" 
