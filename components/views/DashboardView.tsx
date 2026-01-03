@@ -80,7 +80,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                                 <Tooltip 
                                     contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#333', borderRadius: '8px' }}
                                     itemStyle={{ color: '#fff' }}
-                                    formatter={(value: number) => `${currencySymbol}${value.toLocaleString()}`}
+                                    formatter={(value: number, name: any) => {
+                                        const percent = metrics.currentValue > 0 ? (value / metrics.currentValue) * 100 : 0;
+                                        // The second argument in the return array is the label displayed in the tooltip
+                                        return [`${currencySymbol}${value.toLocaleString()} (${percent.toFixed(2)}%)`, name];
+                                    }}
                                 />
                             </PieChart>
                         </ResponsiveContainer>
