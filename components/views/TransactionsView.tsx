@@ -30,23 +30,23 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ trades, metr
 
     return (
         <div className="glass-card rounded-2xl overflow-hidden animate-fade-in flex flex-col h-full">
-            <div className="p-6 border-b border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shrink-0">
+            <div className="p-4 md:p-6 border-b border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shrink-0">
                 <div className="flex items-center gap-4">
                     <Receipt className="w-5 h-5 text-accent-pink" />
                     <div>
-                        <h2 className="text-lg font-bold text-white">Trade History & Performance</h2>
+                        <h2 className="text-lg font-bold text-white">Trade History</h2>
                         <p className="text-xs text-gray-400 mt-1">
-                            Showing {filteredTrades.length} trades 
+                            {filteredTrades.length} trades 
                             {Math.abs(displayedPnL) > 0 && (
                                 <span className={`ml-2 font-bold ${displayedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-                                    (Net P&L: {displayedPnL > 0 ? '+' : '-'}{currencySymbol}{Math.abs(displayedPnL).toLocaleString()})
+                                    (P&L: {displayedPnL > 0 ? '+' : '-'}{currencySymbol}{Math.abs(displayedPnL).toLocaleString()})
                                 </span>
                             )}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
                         <div className="relative flex-1 md:flex-none">
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
                         <input 
@@ -57,12 +57,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ trades, metr
                             className="bg-black/50 border border-white/10 text-white text-sm rounded-lg py-2 pl-9 pr-4 focus:ring-1 focus:ring-accent-pink outline-none w-full md:w-48"
                         />
                         </div>
-                        <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/10">
+                        <div className="flex items-center justify-between md:justify-start bg-white/5 rounded-lg p-1 border border-white/10">
                         {['ALL', 'BUY', 'SELL'].map((type) => (
                             <button
                                 key={type}
                                 onClick={() => setTradeFilterType(type as any)}
-                                className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${
+                                className={`flex-1 md:flex-none px-3 py-1.5 rounded text-xs font-bold transition-colors ${
                                     tradeFilterType === type 
                                     ? 'bg-primary/20 text-white' 
                                     : 'text-gray-500 hover:text-gray-300'
@@ -82,17 +82,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ trades, metr
                             <p className="text-sm">No trades found.</p>
                     </div>
                 ) : (
-                    <table className="w-full text-left">
-                        <thead className="bg-white/5 text-gray-400 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 backdrop-blur-xl">
+                    <table className="w-full text-left min-w-[800px] md:min-w-full">
+                        <thead className="bg-surface text-gray-400 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-md">
                             <tr>
-                                <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4">Ticker</th>
-                                <th className="px-6 py-4">Type</th>
-                                <th className="px-6 py-4 text-right">Qty</th>
-                                <th className="px-6 py-4 text-right">Price</th>
-                                <th className="px-6 py-4 text-right">Net Amount</th>
-                                <th className="px-6 py-4 text-right">Realized P&L</th>
-                                <th className="px-6 py-4 text-right">% Return</th>
+                                <th className="px-4 md:px-6 py-4">Date</th>
+                                <th className="px-4 md:px-6 py-4">Ticker</th>
+                                <th className="px-4 md:px-6 py-4">Type</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Qty</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Price</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Net Amount</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Realized P&L</th>
+                                <th className="px-4 md:px-6 py-4 text-right">% Return</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -106,9 +106,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ trades, metr
 
                                 return (
                                     <tr key={trade.id} className="hover:bg-white/5 transition-colors text-sm text-gray-300 group">
-                                        <td className="px-6 py-4 font-mono text-gray-400 whitespace-nowrap">{trade.date}</td>
-                                        <td className="px-6 py-4 font-bold text-white">{trade.ticker}</td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-4 md:px-6 py-4 font-mono text-gray-400 whitespace-nowrap">{trade.date}</td>
+                                        <td className="px-4 md:px-6 py-4 font-bold text-white">{trade.ticker}</td>
+                                        <td className="px-4 md:px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${
                                                 trade.type === TradeType.BUY 
                                                 ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
@@ -117,13 +117,13 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ trades, metr
                                                 {trade.type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono">{trade.quantity}</td>
-                                        <td className="px-6 py-4 text-right font-mono">{currencySymbol}{trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td className={`px-6 py-4 text-right font-mono font-medium ${trade.netAmount > 0 ? 'text-success' : 'text-gray-400'}`}>
+                                        <td className="px-4 md:px-6 py-4 text-right font-mono">{trade.quantity}</td>
+                                        <td className="px-4 md:px-6 py-4 text-right font-mono">{currencySymbol}{trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td className={`px-4 md:px-6 py-4 text-right font-mono font-medium ${trade.netAmount > 0 ? 'text-success' : 'text-gray-400'}`}>
                                             {trade.netAmount > 0 ? '+' : ''}{currencySymbol}{Math.abs(trade.netAmount).toLocaleString()}
                                         </td>
                                         
-                                        <td className="px-6 py-4 text-right font-mono font-bold">
+                                        <td className="px-4 md:px-6 py-4 text-right font-mono font-bold">
                                             {hasPerf ? (
                                                 <span className={`flex items-center justify-end gap-1 ${perf.realizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
                                                     {perf.realizedPnL > 0 ? '+' : '-'}{currencySymbol}{Math.abs(perf.realizedPnL).toLocaleString()}
@@ -133,7 +133,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ trades, metr
                                             )}
                                         </td>
                                         
-                                        <td className="px-6 py-4 text-right font-mono font-bold">
+                                        <td className="px-4 md:px-6 py-4 text-right font-mono font-bold">
                                                 {hasPerf ? (
                                                 <span className={`flex items-center justify-end gap-1 ${roi >= 0 ? 'text-success' : 'text-danger'}`}>
                                                     {roi >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}

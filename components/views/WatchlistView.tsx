@@ -21,23 +21,23 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
 
     return (
         <div className="glass-card rounded-2xl overflow-hidden animate-fade-in relative min-h-[500px]">
-            <div className="p-6 border-b border-white/5 flex gap-4 items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                 <div className="flex items-center gap-4">
                     <ListChecks className="w-5 h-5 text-accent-pink" />
                     <h2 className="text-lg font-bold text-white">Watchlist</h2>
                 </div>
                 
-                <div className="relative">
+                <div className="relative w-full md:w-auto">
                     {!isAddingWatchlist ? (
                         <button 
                             onClick={() => setIsAddingWatchlist(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary-glow border border-primary/30 rounded-lg text-sm font-bold transition-all"
+                            className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary-glow border border-primary/30 rounded-lg text-sm font-bold transition-all"
                         >
                             <Plus size={16} /> Add Stock
                         </button>
                     ) : (
-                        <div className="flex items-center gap-2 animate-fade-in">
-                            <div className="relative">
+                        <div className="flex items-center gap-2 animate-fade-in w-full md:w-auto">
+                            <div className="relative flex-1 md:flex-none">
                                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
                                 <input 
                                     type="text" 
@@ -45,7 +45,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                     placeholder="Search Market Data..."
                                     value={watchlistSearch}
                                     onChange={(e) => setWatchlistSearch(e.target.value)}
-                                    className="bg-black/50 border border-white/10 text-white text-sm rounded-lg py-2 pl-9 pr-4 focus:ring-1 focus:ring-accent-pink outline-none w-64"
+                                    className="bg-black/50 border border-white/10 text-white text-sm rounded-lg py-2 pl-9 pr-4 focus:ring-1 focus:ring-accent-pink outline-none w-full md:w-64"
                                 />
                                 {watchlistSearch && (
                                     <div className="absolute top-full mt-2 left-0 w-full bg-[#151925] border border-white/10 rounded-lg shadow-xl max-h-60 overflow-y-auto z-50">
@@ -86,18 +86,18 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                         )}
                     </div>
                 ) : (
-                    <table className="w-full text-left">
-                        <thead className="bg-white/5 text-gray-400 text-xs uppercase font-bold tracking-wider">
+                    <table className="w-full text-left min-w-[900px] md:min-w-full">
+                        <thead className="bg-surface text-gray-400 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-md">
                             <tr>
-                                <th className="px-6 py-4">Name</th>
-                                <th className="px-6 py-4 text-right">Current Price</th>
-                                <th className="px-6 py-4 text-right">Desired Entry</th>
-                                <th className="px-6 py-4 text-right">Intrinsic Value</th>
-                                <th className="px-6 py-4 text-right">Margin of Safety</th>
-                                <th className="px-6 py-4 text-right">Call Ratio</th>
-                                <th className="px-6 py-4 text-center">Call</th>
-                                <th className="px-6 py-4 text-center">Report</th>
-                                <th className="px-6 py-4 text-center">Action</th>
+                                <th className="px-4 md:px-6 py-4">Name</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Current Price</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Desired Entry</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Intrinsic Value</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Margin of Safety</th>
+                                <th className="px-4 md:px-6 py-4 text-right">Call Ratio</th>
+                                <th className="px-4 md:px-6 py-4 text-center">Call</th>
+                                <th className="px-4 md:px-6 py-4 text-center">Report</th>
+                                <th className="px-4 md:px-6 py-4 text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -123,47 +123,47 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
 
                                 return (
                                     <tr key={item.id} className="hover:bg-white/5 transition-colors text-sm group">
-                                        <td className="px-6 py-4 font-bold text-white">{item.ticker}</td>
-                                        <td className="px-6 py-4 text-right font-mono text-gray-300">
+                                        <td className="px-4 md:px-6 py-4 font-bold text-white">{item.ticker}</td>
+                                        <td className="px-4 md:px-6 py-4 text-right font-mono text-gray-300">
                                             {currentPrice > 0 ? `${currencySymbol}${currentPrice.toLocaleString()}` : <span className="text-gray-600">N/A</span>}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-4 md:px-6 py-4 text-right">
                                             <input 
                                                 type="number" 
                                                 value={item.desiredEntryPrice || ''}
                                                 onChange={(e) => onUpdate(item.id, 'desiredEntryPrice', parseFloat(e.target.value))}
                                                 placeholder="0"
-                                                className="w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-right outline-none text-white font-mono"
+                                                className="w-20 md:w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-right outline-none text-white font-mono"
                                             />
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-4 md:px-6 py-4 text-right">
                                             <input 
                                                 type="number" 
                                                 value={item.intrinsicValue || ''}
                                                 onChange={(e) => onUpdate(item.id, 'intrinsicValue', parseFloat(e.target.value))}
                                                 placeholder="0"
-                                                className="w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-right outline-none text-white font-mono"
+                                                className="w-20 md:w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-right outline-none text-white font-mono"
                                             />
                                         </td>
-                                        <td className={`px-6 py-4 text-right font-mono font-bold ${mos > 0 ? 'text-success' : 'text-danger'}`}>
+                                        <td className={`px-4 md:px-6 py-4 text-right font-mono font-bold ${mos > 0 ? 'text-success' : 'text-danger'}`}>
                                             {item.intrinsicValue > 0 ? `${mos.toFixed(2)}%` : '-'}
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-gray-300">
+                                        <td className="px-4 md:px-6 py-4 text-right font-mono text-gray-300">
                                             {callRatio.toFixed(2)}
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-4 md:px-6 py-4 text-center">
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold border ${callColor}`}>
                                                 {callStatus}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-4 md:px-6 py-4 text-center">
                                             <div className="flex items-center justify-center gap-2">
                                                 <input 
                                                     type="text"
                                                     value={item.researchLink || ''}
                                                     onChange={(e) => onUpdate(item.id, 'researchLink', e.target.value)}
-                                                    placeholder="Paste Docs Link"
-                                                    className="w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-xs outline-none text-gray-400"
+                                                    placeholder="Link"
+                                                    className="w-16 md:w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-xs outline-none text-gray-400"
                                                 />
                                                 {item.researchLink && (
                                                     <a href={item.researchLink} target="_blank" rel="noopener noreferrer" className="text-accent-cyan hover:text-white">
@@ -172,7 +172,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-4 md:px-6 py-4 text-center">
                                             <button 
                                                 onClick={() => onRemove(item.id)}
                                                 className="p-1.5 text-gray-500 hover:text-danger hover:bg-danger/10 rounded transition-colors"

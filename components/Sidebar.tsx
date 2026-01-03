@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart, ListChecks, ChevronDown, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart, ListChecks, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { ViewState, AssetContext } from '../types';
 
 interface SidebarProps {
@@ -8,9 +8,11 @@ interface SidebarProps {
   setView: (view: ViewState) => void;
   currentContext: AssetContext;
   setContext: (context: AssetContext) => void;
+  mobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentContext, setContext }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentContext, setContext, mobileOpen, setMobileOpen }) => {
   const [showAssetsMenu, setShowAssetsMenu] = useState(false);
 
   const menuItems = [
@@ -30,6 +32,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
       return true;
   });
 
+  const handleViewChange = (id: ViewState) => {
+      setView(id);
+      setMobileOpen(false);
+  }
+
   const renderAssetButton = (label: string, context: AssetContext, isMain = false) => {
       const isActive = currentContext === context && currentView !== ViewState.NET_WORTH;
       return (
@@ -38,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
             onClick={() => {
                 setContext(context);
                 setShowAssetsMenu(false); // Auto-hide menu on selection
+                setMobileOpen(false);
                 
                 // Reset to Dashboard if current view is not available in new context
                 if (currentView === ViewState.NET_WORTH) {
@@ -47,9 +55,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
                     setView(ViewState.DASHBOARD);
                 }
             }}
-            className={`w-full flex items-center justify-between group cursor-pointer transition-all duration-200 mb-1 px-2 py-2 rounded-lg ${isActive && !isMain ? 'bg-white/10' : 'hover:bg-white/5'}`}
+            className={`w-full flex items-center justify-between group cursor-pointer transition-all duration-200 mb-1 px-3 py-2.5 rounded-xl ${isActive && !isMain ? 'bg-white/10' : 'hover:bg-white/5'}`}
         >
-            <span className={`text-sm font-medium transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+            <span className={`text-sm font-semibold transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
                 {label}
             </span>
             {isActive && (
@@ -73,100 +81,118 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
   const currentAssetItem = allAssets.find(a => a.context === currentContext) || allAssets[0];
   const otherAssets = allAssets.filter(a => a.context !== currentContext);
 
-  // Auto-hide logic
+  // Auto-hide logic for Desktop
   const autoHideViews = [ViewState.HOLDINGS, ViewState.WATCHLIST, ViewState.TRANSACTIONS, ViewState.AI_INSIGHTS];
   const isAutoHide = autoHideViews.includes(currentView);
 
   return (
-    <aside 
-        className={`w-64 glass-panel border-r border-border flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-500 ease-in-out group/sidebar
-            ${isAutoHide ? '-translate-x-[calc(100%-20px)] hover:translate-x-0 shadow-2xl hover:shadow-[0_0_40px_rgba(112,66,248,0.2)]' : 'translate-x-0'}
-        `}
-    >
-      {/* Glow Effect Top Left */}
-      <div className="absolute top-0 left-0 w-32 h-32 bg-primary/20 rounded-full blur-[50px] pointer-events-none"></div>
+    <>
+        {/* Mobile Backdrop */}
+        {mobileOpen && (
+            <div 
+                className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm transition-opacity"
+                onClick={() => setMobileOpen(false)}
+            />
+        )}
 
-      {/* Autohide Handle Visual */}
-      {isAutoHide && (
-        <div className="absolute right-0 top-0 bottom-0 w-[20px] flex items-center justify-center cursor-e-resize opacity-100 group-hover/sidebar:opacity-0 transition-opacity duration-300">
-             <div className="h-24 w-1 bg-primary/40 rounded-full shadow-[0_0_10px_rgba(112,66,248,0.5)]"></div>
-        </div>
-      )}
+        <aside 
+            className={`w-64 glass-panel border-r border-border flex flex-col h-screen fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out group/sidebar
+                ${mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+                md:translate-x-0
+                ${isAutoHide ? 'md:-translate-x-[calc(100%-20px)] md:hover:translate-x-0 md:shadow-none md:hover:shadow-[0_0_40px_rgba(var(--primary-color),0.2)]' : ''}
+            `}
+        >
+        {/* Glow Effect Top Left */}
+        <div className="absolute top-0 left-0 w-32 h-32 bg-primary/20 rounded-full blur-[50px] pointer-events-none"></div>
 
-      {/* TradeView Button -> Navigates to Net Worth Overview */}
-      <div className="p-6 border-b border-white/5 relative z-10">
-          <button 
-            onClick={() => setView(ViewState.NET_WORTH)}
-            className="flex items-center gap-3 w-full group hover:bg-white/5 p-2 -ml-2 rounded-xl transition-all"
-          >
-            <div className="bg-gradient-to-tr from-primary to-accent-cyan p-2.5 rounded-xl shadow-[0_0_15px_rgba(112,66,248,0.4)] group-hover:shadow-[0_0_20px_rgba(112,66,248,0.6)] transition-all">
-                <WalletCards className="text-white w-5 h-5" />
+        {/* Autohide Handle Visual (Desktop Only) */}
+        {isAutoHide && (
+            <div className="hidden md:flex absolute right-0 top-0 bottom-0 w-[20px] items-center justify-center cursor-e-resize opacity-100 group-hover/sidebar:opacity-0 transition-opacity duration-300">
+                <div className="h-24 w-1 bg-primary/40 rounded-full shadow-[0_0_10px_rgba(var(--primary-color),0.5)]"></div>
             </div>
-            <div className="text-left">
-                <span className="text-xl font-bold text-white tracking-wide font-sans block leading-none">
-                Trade<span className="text-primary-glow">View</span>
-                </span>
-                <span className="text-[10px] text-accent-cyan uppercase tracking-wider font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    Net Worth Overview
-                </span>
-            </div>
-          </button>
-      </div>
-      
-      {/* Standard Menu */}
-      {currentView !== ViewState.NET_WORTH && (
-          <nav className="flex-1 p-4 space-y-2 relative z-10 animate-fade-in">
-            {filteredMenuItems.map((item) => (
-            <button
-                key={item.id}
-                onClick={() => setView(item.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group ${
-                currentView === item.id
-                    ? 'bg-primary/10 text-white border border-primary/30 shadow-[0_0_10px_rgba(112,66,248,0.2)]'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                }`}
-            >
-                <span className={`transition-colors duration-300 ${currentView === item.id ? 'text-accent-cyan' : 'text-gray-500 group-hover:text-white'}`}>
-                    {item.icon}
-                </span>
-                <span className="font-medium tracking-wide text-sm">{item.label}</span>
-                {currentView === item.id && (
-                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-accent-cyan shadow-[0_0_5px_#00e5ff]"></div>
-                )}
-            </button>
-            ))}
-        </nav>
-      )}
+        )}
 
-      {/* Asset Context Switcher */}
-      <div className={`p-4 ${currentView !== ViewState.NET_WORTH ? 'border-t' : 'mt-auto'} border-white/5 relative z-10`}>
-        <div className="bg-gradient-to-br from-white/5 to-transparent rounded-xl p-4 border border-white/5 shadow-lg">
-            
-            <div className="space-y-1">
-                {/* 1. Current Asset (Always Visible) */}
-                 <div className="mb-2">
-                    <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Current Asset</p>
-                    {renderAssetButton(currentAssetItem.label, currentAssetItem.context, true)}
-                 </div>
+        {/* Mobile Close Button */}
+        <button 
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden absolute top-4 right-4 p-2 text-gray-400 hover:text-white z-20"
+        >
+            <X size={20} />
+        </button>
 
-                {/* 2. Other Assets Toggle */}
-                {showAssetsMenu && (
-                    <div className="pt-2 animate-fade-in border-t border-white/5 mt-2 max-h-40 overflow-y-auto custom-scrollbar">
-                         <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Switch To</p>
-                        {otherAssets.map(asset => renderAssetButton(asset.label, asset.context))}
-                    </div>
-                )}
-            </div>
-
+        {/* TradeView Button -> Navigates to Net Worth Overview */}
+        <div className="p-6 border-b border-white/5 relative z-10">
             <button 
-                onClick={() => setShowAssetsMenu(!showAssetsMenu)}
-                className="w-full mt-2 pt-2 border-t border-white/10 text-[11px] font-bold text-primary-glow hover:text-white transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
+                onClick={() => { setView(ViewState.NET_WORTH); setMobileOpen(false); }}
+                className="flex items-center gap-3 w-full group hover:bg-white/5 p-2 -ml-2 rounded-xl transition-all"
+                title="Go to Net Worth Overview"
             >
-                {showAssetsMenu ? 'Close List' : 'Change Asset'}
-                {showAssetsMenu ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                <div className="bg-gradient-to-tr from-primary to-accent-cyan p-2.5 rounded-xl shadow-[0_0_15px_rgba(var(--primary-color),0.4)] group-hover:shadow-[0_0_20px_rgba(var(--primary-color),0.6)] transition-all">
+                    <WalletCards className="text-white w-6 h-6" />
+                </div>
+                <div className="text-left">
+                    <span className="text-2xl font-extrabold text-white tracking-wide font-sans block leading-none">
+                    Fin<span className="text-primary-glow">Folio</span>
+                    </span>
+                </div>
             </button>
         </div>
-      </div>
-    </aside>
+        
+        {/* Standard Menu */}
+        {currentView !== ViewState.NET_WORTH && (
+            <nav className="flex-1 p-4 space-y-2 relative z-10 animate-fade-in overflow-y-auto">
+                {filteredMenuItems.map((item) => (
+                <button
+                    key={item.id}
+                    onClick={() => handleViewChange(item.id)}
+                    className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group ${
+                    currentView === item.id
+                        ? 'bg-primary/10 text-white border border-primary/30 shadow-[0_0_10px_rgba(var(--primary-color),0.2)]'
+                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    }`}
+                >
+                    <span className={`transition-colors duration-300 ${currentView === item.id ? 'text-primary-glow' : 'text-gray-500 group-hover:text-white'}`}>
+                        {item.icon}
+                    </span>
+                    <span className="font-semibold tracking-wide text-sm">{item.label}</span>
+                    {currentView === item.id && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-accent-cyan shadow-[0_0_5px_var(--accent-cyan)]"></div>
+                    )}
+                </button>
+                ))}
+            </nav>
+        )}
+
+        {/* Asset Context Switcher */}
+        <div className={`p-4 ${currentView !== ViewState.NET_WORTH ? 'border-t' : 'mt-auto'} border-white/5 relative z-10`}>
+            <div className="glass-card rounded-xl p-4 border border-white/5 shadow-lg">
+                
+                <div className="space-y-1">
+                    {/* 1. Current Asset (Always Visible) */}
+                    <div className="mb-2">
+                        <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Current Asset</p>
+                        {renderAssetButton(currentAssetItem.label, currentAssetItem.context, true)}
+                    </div>
+
+                    {/* 2. Other Assets Toggle */}
+                    {showAssetsMenu && (
+                        <div className="pt-2 animate-fade-in border-t border-white/5 mt-2 max-h-40 overflow-y-auto custom-scrollbar">
+                            <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Switch To</p>
+                            {otherAssets.map(asset => renderAssetButton(asset.label, asset.context))}
+                        </div>
+                    )}
+                </div>
+
+                <button 
+                    onClick={() => setShowAssetsMenu(!showAssetsMenu)}
+                    className="w-full mt-2 pt-2 border-t border-white/10 text-[11px] font-bold text-primary-glow hover:text-white transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
+                >
+                    {showAssetsMenu ? 'Close List' : 'Change Asset'}
+                    {showAssetsMenu ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </button>
+            </div>
+        </div>
+        </aside>
+    </>
   );
 };
