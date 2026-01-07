@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart, ListChecks, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { LayoutDashboard, Table2, UploadCloud, BrainCircuit, WalletCards, PieChart, ListChecks, ChevronDown, ChevronUp, X, Crosshair } from 'lucide-react';
 import { ViewState, AssetContext } from '../types';
 
 interface SidebarProps {
@@ -17,6 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
 
   const menuItems = [
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    { id: ViewState.DECISION_ARENA, label: 'Decision Arena', icon: <Crosshair size={20} /> },
     { id: ViewState.HOLDINGS, label: 'Holdings', icon: <PieChart size={20} /> },
     { id: ViewState.WATCHLIST, label: 'Watchlist', icon: <ListChecks size={20} /> },
     { id: ViewState.TRANSACTIONS, label: 'Transactions', icon: <Table2 size={20} /> },
@@ -82,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
   const otherAssets = allAssets.filter(a => a.context !== currentContext);
 
   // Auto-hide logic for Desktop
-  const autoHideViews = [ViewState.HOLDINGS, ViewState.WATCHLIST, ViewState.TRANSACTIONS, ViewState.AI_INSIGHTS];
+  const autoHideViews = [ViewState.HOLDINGS, ViewState.WATCHLIST, ViewState.TRANSACTIONS, ViewState.AI_INSIGHTS, ViewState.DECISION_ARENA];
   const isAutoHide = autoHideViews.includes(currentView);
 
   return (

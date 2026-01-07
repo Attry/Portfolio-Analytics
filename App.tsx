@@ -69,6 +69,7 @@ import { WatchlistView } from './components/views/WatchlistView';
 import { AIInsightsView } from './components/views/AIInsightsView';
 import { UploadView } from './components/views/UploadView';
 import { NetWorthView } from './components/views/NetWorthView';
+import { DecisionArenaView } from './components/views/DecisionArenaView';
 
 const toTitleCase = (str: string) => {
   return str.toLowerCase().split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -216,6 +217,19 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                 onUpdate={updateWatchlistItem}
             />
         )}
+        {/* Decision Arena */}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.DECISION_ARENA && (
+            <DecisionArenaView 
+                metrics={metrics}
+                watchlist={watchlist}
+                priceData={priceData}
+                currencySymbol={currencySymbol}
+                context={context}
+                onUpdateWatchlist={updateWatchlistItem}
+                onAddToWatchlist={addToWatchlist}
+            />
+        )}
+
         {/* AI Insights relies on trades, so hidden for MF/Gold/Cash */}
         {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.AI_INSIGHTS && <AIInsightsView trades={trades} />}
         {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.UPLOAD && (
@@ -242,6 +256,8 @@ const App: React.FC = () => {
 
   // Determine Theme Class
   const themeClass = useMemo(() => {
+      if (view === ViewState.NET_WORTH) return 'theme-networth';
+      
       switch (context) {
           case 'MUTUAL_FUNDS': return 'theme-corporate';
           case 'GOLD_ETF': return 'theme-gold';
@@ -250,10 +266,10 @@ const App: React.FC = () => {
           case 'INDIAN_EQUITY': 
           default: return ''; // Default theme (defined in root)
       }
-  }, [context]);
+  }, [context, view]);
 
   // Check if current view triggers sidebar auto-hide (Desktop Only)
-  const autoHideViews = [ViewState.HOLDINGS, ViewState.WATCHLIST, ViewState.TRANSACTIONS, ViewState.AI_INSIGHTS];
+  const autoHideViews = [ViewState.HOLDINGS, ViewState.WATCHLIST, ViewState.TRANSACTIONS, ViewState.AI_INSIGHTS, ViewState.DECISION_ARENA];
   const isAutoHide = autoHideViews.includes(view);
 
   return (

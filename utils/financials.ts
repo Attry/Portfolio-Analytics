@@ -7,6 +7,7 @@ export interface PerStockData {
   realizedPnL: number;
   buyQueue: { qty: number, price: number }[];
   latestBuyDate: string | null;
+  latestBuyPrice: number; // Added field
 }
 
 export const calculateFIFO = (trades: Trade[]) => {
@@ -19,22 +20,29 @@ export const calculateFIFO = (trades: Trade[]) => {
     let totalInvested = 0;
 
     sortedTrades.forEach(trade => {
-        if (!holdings[trade.ticker]) {
-            holdings[trade.ticker] = { 
+        // Ensure ticker is uppercase for consistency keying
+        const tickerKey = trade.ticker.toUpperCase(); 
+
+        if (!holdings[tickerKey]) {
+            holdings[tickerKey] = { 
                 qty: 0, 
                 invested: 0, 
                 realizedPnL: 0, 
                 buyQueue: [],
-                latestBuyDate: null
+                latestBuyDate: null,
+                latestBuyPrice: 0 
             };
         }
-        const position = holdings[trade.ticker];
+        const position = holdings[tickerKey];
 
         if (trade.type === TradeType.BUY) {
             position.qty += trade.quantity;
             position.buyQueue.push({ qty: trade.quantity, price: trade.price });
-            if (!position.latestBuyDate || new Date(trade.date) > new Date(position.latestBuyDate)) {
+            
+            // Update latest buy details
+            if (!position.latestBuyDate || new Date(trade.date) >= new Date(position.latestBuyDate)) {
                 position.latestBuyDate = trade.date;
+                position.latestBuyPrice = trade.price;
             }
 
         } else if (trade.type === TradeType.SELL) {

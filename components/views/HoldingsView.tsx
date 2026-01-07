@@ -81,7 +81,7 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                                 {(context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF') ? 'Fund' : 'Stock'}
                             </th>
                             <th className="px-2 py-3 md:px-6 md:py-4 text-right">Qty</th>
-                            <th className="px-2 py-3 md:px-6 md:py-4 text-right">Avg</th>
+                            <th className="px-2 py-3 md:px-6 md:py-4 text-right">Avg / Cur</th>
                             <th className="px-2 py-3 md:px-6 md:py-4 text-right">Inv</th>
                             <th className="px-2 py-3 md:px-6 md:py-4 text-right">Cur Val</th>
                             <th className="px-2 py-3 md:px-6 md:py-4 text-right">% Port</th>
@@ -93,6 +93,9 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                     <tbody className="divide-y divide-white/5">
                         {metrics.holdings.map((h: any, i: number) => {
                             const isCash = h.ticker === 'CASH BALANCE';
+                            const avgPrice = h.qty > 0 ? h.invested / h.qty : 0;
+                            const curPrice = h.qty > 0 ? h.marketValue / h.qty : 0;
+                            
                             return (
                             <tr key={i} className={`hover:bg-white/5 transition-colors text-xs md:text-sm group ${isCash ? 'bg-white/5' : ''}`}>
                                 <td className="px-2 py-2 md:px-6 md:py-4 font-bold text-white group-hover:text-primary-glow transition-colors whitespace-nowrap">
@@ -102,7 +105,15 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                                     </div>
                                 </td>
                                 <td className="px-2 py-2 md:px-6 md:py-4 text-gray-300 text-right font-mono">{isCash ? '-' : h.qty}</td>
-                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-300 text-right font-mono">{isCash ? '-' : `${currencySymbol}${(h.invested / h.qty).toFixed(0)}`}</td>
+                                <td className="px-2 py-2 md:px-6 md:py-4 text-right font-mono">
+                                    {isCash ? '-' : (
+                                        <>
+                                            <span className="text-gray-300">{currencySymbol}{avgPrice.toFixed(0)}</span>
+                                            <span className="text-gray-600 mx-1">/</span>
+                                            <span className="text-white font-medium">{currencySymbol}{curPrice.toFixed(0)}</span>
+                                        </>
+                                    )}
+                                </td>
                                 <td className="px-2 py-2 md:px-6 md:py-4 text-gray-300 text-right font-mono">{currencySymbol}{h.invested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
                                 <td className="px-2 py-2 md:px-6 md:py-4 text-white font-medium text-right font-mono">{currencySymbol}{h.marketValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
                                 <td className="px-2 py-2 md:px-6 md:py-4 text-gray-300 text-right font-mono">{h.portfolioPct.toFixed(1)}%</td>

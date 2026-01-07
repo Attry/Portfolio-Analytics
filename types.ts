@@ -54,6 +54,9 @@ export interface WatchlistItem {
   desiredEntryPrice: number;
   intrinsicValue: number;
   researchLink: string;
+  s1?: number;
+  s2?: number;
+  s3?: number;
 }
 
 export interface CashHolding {
@@ -81,7 +84,8 @@ export enum ViewState {
   TRANSACTIONS = 'TRANSACTIONS',
   UPLOAD = 'UPLOAD',
   AI_INSIGHTS = 'AI_INSIGHTS',
-  NET_WORTH = 'NET_WORTH'
+  NET_WORTH = 'NET_WORTH',
+  DECISION_ARENA = 'DECISION_ARENA'
 }
 
 export type AssetContext = 'INDIAN_EQUITY' | 'INTERNATIONAL_EQUITY' | 'GOLD_ETF' | 'CASH_EQUIVALENTS' | 'MUTUAL_FUNDS';

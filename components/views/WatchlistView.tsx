@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { ListChecks, Plus, Search, X, ExternalLink, Trash2 } from 'lucide-react';
+import { ListChecks, Plus, Search, X, ExternalLink, Trash2, Lock } from 'lucide-react';
 import { WatchlistItem } from '../../types';
 
 interface WatchlistViewProps {
@@ -21,7 +21,8 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
 
     return (
         <div className="glass-card rounded-2xl overflow-hidden animate-fade-in relative min-h-[500px]">
-            <div className="p-4 md:p-6 border-b border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            {/* Header with z-30 to ensure dropdown appears over table */}
+            <div className="p-4 md:p-6 border-b border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between relative z-30">
                 <div className="flex items-center gap-4">
                     <ListChecks className="w-5 h-5 text-accent-pink" />
                     <h2 className="text-lg font-bold text-white">Watchlist</h2>
@@ -95,6 +96,9 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                 <th className="px-4 md:px-6 py-4 text-right">Intrinsic Value</th>
                                 <th className="px-4 md:px-6 py-4 text-right">Margin of Safety</th>
                                 <th className="px-4 md:px-6 py-4 text-right">Call Ratio</th>
+                                <th className="px-2 py-4 text-center">S1</th>
+                                <th className="px-2 py-4 text-center">S2</th>
+                                <th className="px-2 py-4 text-center">S3</th>
                                 <th className="px-4 md:px-6 py-4 text-center">Call</th>
                                 <th className="px-4 md:px-6 py-4 text-center">Report</th>
                                 <th className="px-4 md:px-6 py-4 text-center">Action</th>
@@ -102,23 +106,55 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                         </thead>
                         <tbody className="divide-y divide-white/5">
                             {watchlist.map(item => {
-                                const currentPrice = priceData[item.ticker] || 0;
+                                // Fix: Ensure uppercase key lookup for price
+                                const currentPrice = priceData[item.ticker.toUpperCase()] || 0;
+                                
+                                // Determine Effective Desired Entry (Closest S level)
+                                const supports = [item.s1, item.s2, item.s3].filter(s => s && s > 0) as number[];
+                                let effectiveDesiredEntry = item.desiredEntryPrice || 0;
+                                const hasSupports = supports.length > 0;
+
+                                if (hasSupports) {
+                                    if (currentPrice > 0) {
+                                        // Find support closest to current price
+                                        effectiveDesiredEntry = supports.reduce((prev, curr) => 
+                                            Math.abs(curr - currentPrice) < Math.abs(prev - currentPrice) ? curr : prev
+                                        );
+                                    } else {
+                                        effectiveDesiredEntry = supports[0];
+                                    }
+                                }
+
                                 const mos = item.intrinsicValue > 0 
                                     ? (1 - (currentPrice / item.intrinsicValue)) * 100 
                                     : 0;
+                                
                                 const callRatio = currentPrice > 0 
-                                    ? item.desiredEntryPrice / currentPrice 
+                                    ? effectiveDesiredEntry / currentPrice 
                                     : 0;
 
                                 let callStatus = 'Expensive';
                                 let callColor = 'text-danger bg-danger/10 border-danger/20';
                                 
-                                if (callRatio > 0.9) {
-                                    callStatus = 'Accumulate';
-                                    callColor = 'text-success bg-success/10 border-success/20';
-                                } else if (callRatio >= 0.85) {
-                                    callStatus = 'Monitor';
-                                    callColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+                                // Logic:
+                                // Accumulate: Ratio > 0.95
+                                // Monitor: 0.88 < Ratio <= 0.95
+                                // Expensive: Ratio <= 0.88 OR Intrinsic Value <= 0
+                                
+                                if (item.intrinsicValue > 0) {
+                                    if (callRatio > 0.95) {
+                                        callStatus = 'Accumulate';
+                                        callColor = 'text-success bg-success/10 border-success/20';
+                                    } else if (callRatio > 0.88) {
+                                        callStatus = 'Monitor';
+                                        callColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+                                    } else {
+                                        callStatus = 'Expensive';
+                                        callColor = 'text-danger bg-danger/10 border-danger/20';
+                                    }
+                                } else {
+                                    callStatus = 'Expensive';
+                                    callColor = 'text-danger bg-danger/10 border-danger/20';
                                 }
 
                                 return (
@@ -127,14 +163,19 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                         <td className="px-4 md:px-6 py-4 text-right font-mono text-gray-300">
                                             {currentPrice > 0 ? `${currencySymbol}${currentPrice.toLocaleString()}` : <span className="text-gray-600">N/A</span>}
                                         </td>
-                                        <td className="px-4 md:px-6 py-4 text-right">
+                                        <td className="px-4 md:px-6 py-4 text-right relative">
                                             <input 
                                                 type="number" 
-                                                value={item.desiredEntryPrice || ''}
-                                                onChange={(e) => onUpdate(item.id, 'desiredEntryPrice', parseFloat(e.target.value))}
+                                                value={hasSupports ? effectiveDesiredEntry : (item.desiredEntryPrice || '')}
+                                                onChange={(e) => !hasSupports && onUpdate(item.id, 'desiredEntryPrice', parseFloat(e.target.value))}
                                                 placeholder="0"
-                                                className="w-20 md:w-24 bg-transparent border-b border-white/10 focus:border-accent-pink text-right outline-none text-white font-mono"
+                                                readOnly={hasSupports}
+                                                className={`w-20 md:w-24 bg-transparent border-b text-right outline-none font-mono ${hasSupports ? 'text-accent-cyan border-transparent cursor-not-allowed opacity-80' : 'text-white border-white/10 focus:border-accent-pink'}`}
+                                                title={hasSupports ? "Auto-selected from Support Levels" : "Manual Entry"}
                                             />
+                                            {hasSupports && (
+                                                <Lock size={10} className="absolute top-1/2 -translate-y-1/2 right-2 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            )}
                                         </td>
                                         <td className="px-4 md:px-6 py-4 text-right">
                                             <input 
@@ -151,6 +192,18 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                         <td className="px-4 md:px-6 py-4 text-right font-mono text-gray-300">
                                             {callRatio.toFixed(2)}
                                         </td>
+                                        
+                                        {/* Support Levels */}
+                                        <td className="px-2 py-4 text-center">
+                                            <input type="number" value={item.s1 || ''} onChange={(e) => onUpdate(item.id, 's1', parseFloat(e.target.value))} placeholder="S1" className="w-12 bg-transparent border-b border-white/10 focus:border-primary text-center outline-none text-gray-400 text-xs font-mono" />
+                                        </td>
+                                        <td className="px-2 py-4 text-center">
+                                            <input type="number" value={item.s2 || ''} onChange={(e) => onUpdate(item.id, 's2', parseFloat(e.target.value))} placeholder="S2" className="w-12 bg-transparent border-b border-white/10 focus:border-primary text-center outline-none text-gray-400 text-xs font-mono" />
+                                        </td>
+                                        <td className="px-2 py-4 text-center">
+                                            <input type="number" value={item.s3 || ''} onChange={(e) => onUpdate(item.id, 's3', parseFloat(e.target.value))} placeholder="S3" className="w-12 bg-transparent border-b border-white/10 focus:border-primary text-center outline-none text-gray-400 text-xs font-mono" />
+                                        </td>
+
                                         <td className="px-4 md:px-6 py-4 text-center">
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold border ${callColor}`}>
                                                 {callStatus}

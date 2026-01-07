@@ -125,9 +125,16 @@ export const usePortfolioData = (context: AssetContext) => {
     };
 
     // -- Watchlist Actions --
-    const addToWatchlist = (ticker: string) => {
+    const addToWatchlist = (ticker: string, initialData?: Partial<WatchlistItem>) => {
         if (watchlist.some(w => w.ticker === ticker)) return;
-        const newItem: WatchlistItem = { id: Math.random().toString(36).substr(2, 9), ticker, desiredEntryPrice: 0, intrinsicValue: 0, researchLink: '' };
+        const newItem: WatchlistItem = { 
+            id: Math.random().toString(36).substr(2, 9), 
+            ticker, 
+            desiredEntryPrice: 0, 
+            intrinsicValue: 0, 
+            researchLink: '',
+            ...initialData // Spread initial data like s1, s2, s3, etc.
+        };
         const updated = [...watchlist, newItem];
         setWatchlist(updated);
         persist(STORAGE_KEYS.WATCHLIST, updated);
@@ -394,6 +401,7 @@ export const usePortfolioData = (context: AssetContext) => {
           .filter(([_, data]) => data.qty > 0)
           .map(([ticker, data]) => {
               const pnlRecord = pnlData.find(p => p.scripName.toLowerCase() === ticker.toLowerCase());
+              // Fix: Uppercase lookup to match parseMarketDataCSV storage
               let livePrice = priceData[ticker.toUpperCase()]; 
 
               if (livePrice === undefined && context === 'INTERNATIONAL_EQUITY') {
@@ -428,7 +436,9 @@ export const usePortfolioData = (context: AssetContext) => {
 
               return {
                   ticker, qty: data.qty, invested: data.invested, unrealized, realized: data.realizedPnL,
-                  netReturnPct, marketValue, daysHeld: isNaN(daysHeld) ? 0 : daysHeld, isLive, portfolioPct: 0
+                  netReturnPct, marketValue, daysHeld: isNaN(daysHeld) ? 0 : daysHeld, isLive, portfolioPct: 0,
+                  latestBuyDate: data.latestBuyDate,
+                  latestBuyPrice: data.latestBuyPrice // Pass through for UI
               };
           });
 
@@ -443,7 +453,9 @@ export const usePortfolioData = (context: AssetContext) => {
             finalHoldings.push({
                 ticker: 'CASH BALANCE', qty: 1, invested: cashBalance, unrealized: 0, realized: 0,
                 netReturnPct: 0, marketValue: cashBalance, daysHeld: 0, isLive: true,
-                portfolioPct: currentValue > 0 ? (cashBalance / currentValue) * 100 : 0
+                portfolioPct: currentValue > 0 ? (cashBalance / currentValue) * 100 : 0,
+                latestBuyDate: null,
+                latestBuyPrice: 0
             });
         }
         finalHoldings.sort((a, b) => b.portfolioPct - a.portfolioPct);
