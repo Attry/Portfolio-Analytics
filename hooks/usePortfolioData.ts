@@ -119,7 +119,7 @@ export const usePortfolioData = (context: AssetContext) => {
     // -- Actions --
     const clearAllData = () => {
         if (!confirm(`Clear all data for ${context}?`)) return;
-        Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+        Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k as string));
         setTrades([]); setPnlData([]); setLedgerData([]); setDividendData([]); setPriceData({}); setWatchlist([]); setUploadMeta({}); setSummary({}); setMfHoldings([]); setGoldHoldings([]); setCashHoldings([]);
         alert('Data cleared.');
     };

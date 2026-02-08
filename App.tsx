@@ -1,67 +1,14 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { StatsCard } from './components/StatsCard';
-import { ViewState, Trade, TradeType, PnLRecord, LedgerRecord, DividendRecord, StockPriceRecord, WatchlistItem, AssetContext } from './types';
-import { analyzePortfolio } from './services/geminiService';
+import { ViewState, AssetContext } from './types';
 import { 
-  Briefcase, 
-  TrendingUp, 
-  Activity, 
-  Search, 
-  Filter, 
-  Download,
-  Send,
-  Loader2,
-  FileSpreadsheet,
-  UploadCloud,
-  BrainCircuit,
-  Receipt,
-  Landmark,
-  Coins,
-  CheckCircle2,
-  AlertCircle,
-  Eye,
-  RefreshCw,
-  Scale,
-  Wallet,
-  CalendarClock,
-  Sparkles,
-  Zap,
-  ExternalLink,
-  Calendar,
-  Link,
-  Globe,
-  Trash2,
-  History,
-  ListChecks,
-  Plus,
-  X,
-  LineChart as LineChartIcon,
-  BarChart3,
-  FileText,
-  ArrowUpRight,
-  ArrowDownRight,
-  RotateCcw,
-  WalletCards,
-  Menu // Import Menu icon
+  RefreshCw, 
+  Calendar, 
+  WalletCards, 
+  Menu 
 } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend
-} from 'recharts';
 
-// New Imports
-import { usePortfolioData } from './hooks/usePortfolioData';
+// View Components
 import { DashboardView } from './components/views/DashboardView';
 import { HoldingsView } from './components/views/HoldingsView';
 import { TransactionsView } from './components/views/TransactionsView';
@@ -70,6 +17,9 @@ import { AIInsightsView } from './components/views/AIInsightsView';
 import { UploadView } from './components/views/UploadView';
 import { NetWorthView } from './components/views/NetWorthView';
 import { DecisionArenaView } from './components/views/DecisionArenaView';
+
+// Hooks
+import { usePortfolioData } from './hooks/usePortfolioData';
 
 const toTitleCase = (str: string) => {
   return str.toLowerCase().split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -80,7 +30,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   
   const {
       trades, metrics, watchlist, priceData, uploadMeta, sheetId, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL, globalMarketDate,
-      processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate,
+      processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, saveSheetId, updateGlobalDate,
       addSalary, updateCashHolding, deleteCashHolding
   } = usePortfolioData(context);
 
@@ -149,19 +99,18 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
 
   if (currentView === ViewState.NET_WORTH) {
       return (
-          <div className="p-6 h-full overflow-y-auto">
+          <div className="p-6 h-full overflow-y-auto custom-scrollbar">
               <NetWorthView />
           </div>
       );
   }
 
   return (
-    <div className="p-2 md:p-6 space-y-4 md:space-y-6 overflow-y-auto h-full pb-24 relative z-10">
+    <div className="p-2 md:p-6 space-y-4 md:space-y-6 overflow-y-auto h-full pb-24 relative z-10 custom-scrollbar">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-8 gap-4 md:gap-0">
             <div>
                 <h2 className="text-2xl md:text-3xl font-bold text-white tracking-normal">{toTitleCase(context)}</h2>
-                {/* Subtitle Removed as per request */}
             </div>
             
             <div className="flex flex-col-reverse md:flex-row items-center gap-4 w-full md:w-auto">
