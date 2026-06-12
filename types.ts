@@ -1,7 +1,9 @@
 
 export enum TradeType {
   BUY = 'BUY',
-  SELL = 'SELL'
+  SELL = 'SELL',
+  SPLIT = 'SPLIT',
+  BONUS = 'BONUS'
 }
 
 export interface Trade {

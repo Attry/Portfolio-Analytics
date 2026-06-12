@@ -45,6 +45,25 @@ export const calculateFIFO = (trades: Trade[]) => {
                 position.latestBuyPrice = trade.price;
             }
 
+        } else if (trade.type === TradeType.SPLIT) {
+            // trade.quantity is the Split Factor (e.g., 2 for 1:2 split)
+            const factor = trade.quantity;
+            if (factor > 0) {
+                position.qty *= factor;
+                position.buyQueue.forEach(batch => {
+                    batch.qty *= factor;
+                    batch.price /= factor;
+                });
+                position.latestBuyPrice /= factor;
+            }
+        } else if (trade.type === TradeType.BONUS) {
+            // trade.quantity is the Bonus Shares added
+            const bonusQty = trade.quantity;
+            if (bonusQty > 0) {
+                position.qty += bonusQty;
+                // Bonus shares have 0 cost basis
+                position.buyQueue.push({ qty: bonusQty, price: 0 });
+            }
         } else if (trade.type === TradeType.SELL) {
             let qtyToSell = trade.quantity;
             let currentTradePnL = 0;

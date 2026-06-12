@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Wallet, Trash2 } from 'lucide-react';
+import { Wallet, Trash2, Briefcase } from 'lucide-react';
 import { AssetContext } from '../../types';
+import { CartoonBackground } from '../CartoonBackground';
 
 interface HoldingsViewProps {
   metrics: any;
@@ -15,25 +16,25 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
     
     if (context === 'CASH_EQUIVALENTS') {
         return (
-            <div className="glass-card rounded-2xl overflow-hidden animate-fade-in flex flex-col h-full">
+            <div className="glass-card rounded-2xl overflow-hidden animate-fade-in flex flex-col h-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[350px] md:min-w-full">
-                        <thead className="bg-surface text-gray-400 text-[10px] md:text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-sm">
+                        <thead className="bg-gray-100 text-gray-600 text-[10px] md:text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-sm border-b-2 border-black">
                             <tr>
                                 <th className="px-2 py-3 md:px-6 md:py-4">Account</th>
                                 <th className="px-2 py-3 md:px-6 md:py-4 text-right">Value ({currencySymbol})</th>
                                 <th className="px-2 py-3 md:px-6 md:py-4 text-center w-12 md:w-16">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y-2 divide-black">
                             {metrics.holdings.map((h: any) => (
-                                <tr key={h.id} className="hover:bg-white/5 transition-colors text-xs md:text-sm group">
+                                <tr key={h.id} className="hover:bg-gray-50 transition-colors text-xs md:text-sm group">
                                     <td className="px-2 py-2 md:px-6 md:py-4">
                                         <input 
                                             type="text" 
                                             value={h.account}
                                             onChange={(e) => onUpdateHolding && onUpdateHolding(h.id, 'account', e.target.value)}
-                                            className="bg-transparent border-b border-transparent focus:border-primary/50 outline-none text-white font-bold w-full transition-colors"
+                                            className="bg-transparent border-b-2 border-transparent focus:border-primary outline-none text-gray-900 font-bold w-full transition-colors"
                                         />
                                     </td>
                                     <td className="px-2 py-2 md:px-6 md:py-4 text-right">
@@ -41,7 +42,7 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                                             type="number" 
                                             value={h.value}
                                             onChange={(e) => onUpdateHolding && onUpdateHolding(h.id, 'value', parseFloat(e.target.value))}
-                                            className="bg-transparent border-b border-transparent focus:border-primary/50 outline-none text-success font-mono font-bold text-right w-full transition-colors"
+                                            className="bg-transparent border-b-2 border-transparent focus:border-primary outline-none text-success font-mono font-bold text-right w-full transition-colors"
                                         />
                                     </td>
                                     <td className="px-2 py-2 md:px-6 md:py-4 text-center">
@@ -72,10 +73,11 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
     const showRealized = context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF';
 
     return (
-        <div className="glass-card rounded-2xl overflow-hidden animate-fade-in flex flex-col h-full">
-            <div className="overflow-x-auto custom-scrollbar">
+        <div className="glass-card rounded-2xl overflow-hidden animate-fade-in flex flex-col h-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
+            <CartoonBackground icon={Briefcase} pattern="dots" color="text-accent-cyan" opacity="opacity-[0.03]" />
+            <div className="overflow-x-auto custom-scrollbar relative z-10">
                 <table className="w-full text-left border-collapse min-w-[600px] md:min-w-full">
-                    <thead className="bg-surface text-gray-400 text-[10px] md:text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-md">
+                    <thead className="bg-gray-100 text-gray-600 text-[10px] md:text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-md border-b-2 border-black">
                         <tr>
                             <th className="px-2 py-3 md:px-6 md:py-4 min-w-[100px]">
                                 {(context === 'MUTUAL_FUNDS' || context === 'GOLD_ETF') ? 'Fund' : 'Stock'}
@@ -90,34 +92,34 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ metrics, currencySym
                             <th className="px-2 py-3 md:px-6 md:py-4 text-right">Unr. P&L</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y-2 divide-black">
                         {metrics.holdings.map((h: any, i: number) => {
                             const isCash = h.ticker === 'CASH BALANCE';
                             const avgPrice = h.qty > 0 ? h.invested / h.qty : 0;
                             const curPrice = h.qty > 0 ? h.marketValue / h.qty : 0;
                             
                             return (
-                            <tr key={i} className={`hover:bg-white/5 transition-colors text-xs md:text-sm group ${isCash ? 'bg-white/5' : ''}`}>
-                                <td className="px-2 py-2 md:px-6 md:py-4 font-bold text-white group-hover:text-primary-glow transition-colors whitespace-nowrap">
+                            <tr key={i} className={`hover:bg-gray-50 transition-colors text-xs md:text-sm group ${isCash ? 'bg-gray-50' : ''}`}>
+                                <td className="px-2 py-2 md:px-6 md:py-4 font-bold text-gray-900 group-hover:text-primary transition-colors whitespace-nowrap">
                                     <div className="flex items-center gap-1.5 md:gap-2">
                                         {isCash && <Wallet className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />}
                                         <span className="truncate max-w-[120px] md:max-w-none block" title={h.ticker}>{h.ticker}</span>
                                     </div>
                                 </td>
-                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-300 text-right font-mono">{isCash ? '-' : h.qty}</td>
+                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-700 text-right font-mono">{isCash ? '-' : h.qty}</td>
                                 <td className="px-2 py-2 md:px-6 md:py-4 text-right font-mono">
                                     {isCash ? '-' : (
                                         <>
-                                            <span className="text-gray-300">{currencySymbol}{avgPrice.toFixed(0)}</span>
-                                            <span className="text-gray-600 mx-1">/</span>
-                                            <span className="text-white font-medium">{currencySymbol}{curPrice.toFixed(0)}</span>
+                                            <span className="text-gray-700">{currencySymbol}{avgPrice.toFixed(0)}</span>
+                                            <span className="text-gray-400 mx-1">/</span>
+                                            <span className="text-gray-900 font-medium">{currencySymbol}{curPrice.toFixed(0)}</span>
                                         </>
                                     )}
                                 </td>
-                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-300 text-right font-mono">{currencySymbol}{h.invested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
-                                <td className="px-2 py-2 md:px-6 md:py-4 text-white font-medium text-right font-mono">{currencySymbol}{h.marketValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
-                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-300 text-right font-mono">{h.portfolioPct.toFixed(1)}%</td>
-                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-300 text-right font-mono">{isCash || h.daysHeld === 0 ? '-' : `${h.daysHeld}d`}</td>
+                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-700 text-right font-mono">{currencySymbol}{h.invested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-900 font-medium text-right font-mono">{currencySymbol}{h.marketValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-700 text-right font-mono">{h.portfolioPct.toFixed(1)}%</td>
+                                <td className="px-2 py-2 md:px-6 md:py-4 text-gray-700 text-right font-mono">{isCash || h.daysHeld === 0 ? '-' : `${h.daysHeld}d`}</td>
                                 {showRealized && (
                                     <td className={`px-2 py-2 md:px-6 md:py-4 text-right font-mono font-bold ${h.realized === 0 ? 'text-gray-400' : (h.realized > 0 ? 'text-success' : 'text-danger')}`}>
                                         {(isCash || h.realized === 0) ? '-' : `${h.realized > 0 ? '+' : '-'}${Math.abs(h.realized).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}

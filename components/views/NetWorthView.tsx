@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { useConsolidatedData } from '../../hooks/useConsolidatedData';
-import { Wallet, TrendingUp, Landmark, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
+import { Wallet, TrendingUp, Landmark, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, RefreshCw, Gem } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { CartoonBackground } from '../CartoonBackground';
 
 export const NetWorthView: React.FC = () => {
     const { 
@@ -32,15 +33,16 @@ export const NetWorthView: React.FC = () => {
     const displayPct = isNaN(netReturnPct) ? 0 : netReturnPct;
 
     return (
-        <div className="space-y-8 animate-fade-in pb-20">
+        <div className="space-y-8 animate-fade-in pb-20 relative">
+             <CartoonBackground icon={Gem} pattern="grid" color="text-accent-pink" opacity="opacity-[0.03]" />
              {/* Header */}
-             <div className="flex justify-between items-end border-b border-white/5 pb-4">
+             <div className="flex justify-between items-end border-b-2 border-black pb-4 relative z-10">
                 <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
                         <Landmark className="text-accent-cyan" size={32} />
                         Net Worth Overview
                     </h1>
-                    <p className="text-gray-400 mt-2">Consolidated view of all asset classes</p>
+                    <p className="text-gray-600 mt-2">Consolidated view of all asset classes</p>
                 </div>
                 <div className="text-right">
                     <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider">EUR/INR Rate</p>
@@ -51,32 +53,32 @@ export const NetWorthView: React.FC = () => {
              {/* Key Metrics Grid */}
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                  {/* NAV */}
-                 <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                 <div className="glass-card rounded-2xl p-6 relative overflow-hidden group border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent opacity-50"></div>
                      <div className="relative z-10">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Net Asset Value</p>
-                        <h2 className="text-3xl font-bold text-white mt-2">{formatCurrency(netAssetValue)}</h2>
-                        <div className="mt-4 flex items-center text-xs text-gray-400 gap-1">
+                        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Net Asset Value</p>
+                        <h2 className="text-3xl font-bold text-gray-900 mt-2">{formatCurrency(netAssetValue)}</h2>
+                        <div className="mt-4 flex items-center text-xs text-gray-600 gap-1">
                             <Wallet size={14} /> Total Portfolio Value
                         </div>
                      </div>
                  </div>
 
                  {/* Net Cash */}
-                 <div className="glass-card rounded-2xl p-6 relative overflow-hidden">
+                 <div className="glass-card rounded-2xl p-6 relative overflow-hidden border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
                      <div className="relative z-10">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Net Cash</p>
+                        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Net Cash</p>
                         <h2 className="text-3xl font-bold text-success mt-2">{formatCurrency(netCash)}</h2>
-                        <div className="mt-4 flex items-center text-xs text-gray-400 gap-1">
+                        <div className="mt-4 flex items-center text-xs text-gray-600 gap-1">
                             <Landmark size={14} /> Available Liquidity
                         </div>
                      </div>
                  </div>
 
                  {/* Net Returns % */}
-                 <div className="glass-card rounded-2xl p-6 relative overflow-hidden">
+                 <div className="glass-card rounded-2xl p-6 relative overflow-hidden border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
                      <div className="relative z-10">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Net Returns (%)</p>
+                        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Net Returns (%)</p>
                         <div className="flex items-end gap-2 mt-2">
                              <h2 className={`text-3xl font-bold ${displayPct >= 0 ? 'text-accent-cyan' : 'text-danger'}`}>
                                  {displayPct >= 0 ? '+' : ''}{displayPct.toFixed(2)}%
@@ -88,13 +90,13 @@ export const NetWorthView: React.FC = () => {
                  </div>
 
                  {/* Net Returns Abs */}
-                 <div className="glass-card rounded-2xl p-6 relative overflow-hidden">
+                 <div className="glass-card rounded-2xl p-6 relative overflow-hidden border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all">
                      <div className="relative z-10">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Net Returns (Abs)</p>
+                        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Net Returns (Abs)</p>
                         <h2 className={`text-3xl font-bold mt-2 ${netReturnAbs >= 0 ? 'text-accent-cyan' : 'text-danger'}`}>
                              {netReturnAbs >= 0 ? '+' : ''}{formatCurrency(netReturnAbs)}
                         </h2>
-                        <div className="mt-4 flex items-center text-xs text-gray-400 gap-1">
+                        <div className="mt-4 flex items-center text-xs text-gray-600 gap-1">
                             <TrendingUp size={14} /> Total P&L
                         </div>
                      </div>
@@ -104,9 +106,9 @@ export const NetWorthView: React.FC = () => {
              {/* Allocation Section */}
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                  {/* Chart */}
-                 <div className="glass-card rounded-2xl p-8 lg:col-span-2 border border-white/5 flex flex-col">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                        <PieChartIcon className="w-5 h-5 text-primary-glow" /> Asset Allocation
+                 <div className="glass-card rounded-2xl p-8 lg:col-span-2 border-2 border-black flex flex-col shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <PieChartIcon className="w-5 h-5 text-primary" /> Asset Allocation
                     </h3>
                     <div className="flex-1 min-h-[300px] relative">
                         <ResponsiveContainer width="100%" height="100%">
@@ -119,15 +121,16 @@ export const NetWorthView: React.FC = () => {
                                     outerRadius={120}
                                     paddingAngle={5}
                                     dataKey="value"
-                                    stroke="none"
+                                    stroke="black"
+                                    strokeWidth={2}
                                 >
                                     {allocations.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
                                 <Tooltip 
-                                    contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#333', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#fff' }}
+                                    contentStyle={{ backgroundColor: '#fff', borderColor: '#000', borderWidth: '2px', borderRadius: '8px', boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)' }}
+                                    itemStyle={{ color: '#000', fontWeight: 'bold' }}
                                     formatter={(value: number, name: string) => [
                                         `${formatCurrency(value)} (${((value / netAssetValue) * 100).toFixed(2)}%)`, 
                                         name
@@ -139,27 +142,27 @@ export const NetWorthView: React.FC = () => {
                  </div>
 
                  {/* Allocation Details */}
-                 <div className="glass-card rounded-2xl p-6 border border-white/5">
-                    <h3 className="text-lg font-bold text-white mb-6">Breakdown</h3>
+                 <div className="glass-card rounded-2xl p-6 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">Breakdown</h3>
                     <div className="space-y-4">
                         {allocations.map((item) => {
                             const pct = netAssetValue > 0 ? (item.value / netAssetValue) * 100 : 0;
                             return (
-                                <div key={item.name} className="p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                <div key={item.name} className="p-4 bg-white rounded-xl border-2 border-black hover:translate-x-[2px] hover:translate-y-[2px] transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none">
                                     <div className="flex justify-between items-center mb-2">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                            <span className="text-sm font-medium text-gray-300">{item.name}</span>
+                                            <div className="w-3 h-3 rounded-full border border-black" style={{ backgroundColor: item.color }}></div>
+                                            <span className="text-sm font-medium text-gray-700">{item.name}</span>
                                         </div>
-                                        <span className="text-sm font-bold text-white">{pct.toFixed(1)}%</span>
+                                        <span className="text-sm font-bold text-gray-900">{pct.toFixed(1)}%</span>
                                     </div>
-                                    <div className="w-full bg-black/50 rounded-full h-1.5 overflow-hidden">
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden border border-black">
                                         <div 
                                             className="h-full rounded-full transition-all duration-1000" 
                                             style={{ width: `${pct}%`, backgroundColor: item.color }}
                                         ></div>
                                     </div>
-                                    <p className="text-right text-xs text-gray-500 mt-2 font-mono">
+                                    <p className="text-right text-xs text-gray-600 mt-2 font-mono">
                                         {formatCurrency(item.value)}
                                     </p>
                                 </div>

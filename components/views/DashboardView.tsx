@@ -4,6 +4,7 @@ import { Wallet, Briefcase, TrendingUp, Activity, PieChart as PieChartIcon, BarC
 import { StatsCard } from '../StatsCard';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { AssetContext } from '../../types';
+import { CartoonBackground } from '../CartoonBackground';
 
 const COLORS = ['#7042f8', '#00e5ff', '#ff2975', '#00ffa3', '#facc15', '#fb923c', '#a855f7'];
 
@@ -98,13 +99,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
             <div className="space-y-6 animate-fade-in relative">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
-                        <div className="glass-card rounded-2xl p-8 flex items-center justify-between border border-white/5 relative overflow-hidden">
+                        <div className="glass-card rounded-2xl p-8 flex items-center justify-between border-2 border-black relative overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                              <div className="absolute inset-0 bg-gradient-to-r from-success/10 to-transparent pointer-events-none"></div>
                              <div>
-                                 <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Cash Value</p>
-                                 <h1 className="text-5xl font-bold text-white tracking-tight">{currencySymbol}{metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</h1>
+                                 <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Cash Value</p>
+                                 <h1 className="text-5xl font-bold text-gray-900 tracking-tight">{currencySymbol}{metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</h1>
                              </div>
-                             <div className="p-4 bg-success/10 rounded-2xl border border-success/20">
+                             <div className="p-4 bg-success/10 rounded-2xl border-2 border-success/20">
                                  <Coins className="w-10 h-10 text-success" />
                              </div>
                         </div>
@@ -113,7 +114,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                     <div className="flex flex-col justify-center">
                         <button 
                             onClick={() => setIsSalaryModalOpen(true)}
-                            className="w-full py-6 bg-primary hover:bg-primary-glow text-white rounded-2xl font-bold text-lg transition-all shadow-[0_0_20px_rgba(112,66,248,0.3)] hover:shadow-[0_0_30px_rgba(112,66,248,0.5)] flex items-center justify-center gap-3 border border-primary/50"
+                            className="w-full py-6 bg-primary hover:bg-primary-glow text-white rounded-2xl font-bold text-lg transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] flex items-center justify-center gap-3 border-2 border-black"
                         >
                             <Plus className="w-6 h-6" /> Add Salary
                         </button>
@@ -122,46 +123,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
 
                 {/* Salary Modal */}
                 {isSalaryModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4">
-                        <div className="bg-[#151925] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm animate-fade-in p-4">
+                        <div className="bg-white border-2 border-black rounded-2xl p-6 w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
                             <button 
                                 onClick={() => setIsSalaryModalOpen(false)}
-                                className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                                className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
                             >
                                 <X size={20} />
                             </button>
-                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                                 <Plus className="w-5 h-5 text-success" /> Add to Cash
                             </h3>
                             
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Account Name</label>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Account Name</label>
                                     <input 
                                         list="accounts" 
                                         type="text" 
                                         value={salaryAccount}
                                         onChange={(e) => setSalaryAccount(e.target.value)}
                                         placeholder="e.g. HDFC Salary, Savings..."
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                                        className="w-full bg-white border-2 border-black rounded-xl p-3 text-gray-900 focus:outline-none focus:border-primary transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
                                     />
                                     <datalist id="accounts">
                                         {accounts.map((acc: any) => <option key={acc} value={acc} />)}
                                     </datalist>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Amount ({currencySymbol})</label>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Amount ({currencySymbol})</label>
                                     <input 
                                         type="number" 
                                         value={salaryAmount}
                                         onChange={(e) => setSalaryAmount(e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-primary/50 transition-colors font-mono text-lg"
+                                        className="w-full bg-white border-2 border-black rounded-xl p-3 text-gray-900 focus:outline-none focus:border-primary transition-colors font-mono text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
                                     />
                                 </div>
                                 <button 
                                     onClick={handleAddSalary}
-                                    className="w-full py-3 bg-success/20 hover:bg-success/30 text-success border border-success/30 rounded-xl font-bold mt-2 transition-all"
+                                    className="w-full py-3 bg-success text-white border-2 border-black rounded-xl font-bold mt-2 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
                                 >
                                     Confirm Add
                                 </button>
@@ -176,8 +177,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
     const isEquityContext = context === 'INDIAN_EQUITY' || context === 'INTERNATIONAL_EQUITY';
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 ${isEquityContext ? 'xl:grid-cols-6' : 'xl:grid-cols-5'} gap-4`}>
+        <div className="space-y-6 animate-fade-in relative">
+            <CartoonBackground icon={PieChartIcon} pattern="dots" color="text-primary" opacity="opacity-[0.03]" />
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 ${isEquityContext ? 'xl:grid-cols-6' : 'xl:grid-cols-5'} gap-4 relative z-10`}>
                 <StatsCard 
                     title="Current Value" 
                     value={`${currencySymbol}${metrics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} 
@@ -226,8 +228,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Allocation Chart */}
-                <div className="glass-card rounded-2xl p-6 lg:col-span-1 border border-white/5">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <div className="glass-card rounded-2xl p-6 lg:col-span-1 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <PieChartIcon className="w-5 h-5 text-accent-cyan" /> Allocation
                     </h3>
                     <div className="h-[300px] flex items-center justify-center">
@@ -243,12 +245,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                                     dataKey="value"
                                 >
                                     {tickerDistribution.map((entry: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="black" strokeWidth={2} />
                                     ))}
                                 </Pie>
                                 <Tooltip 
-                                    contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#333', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#fff' }}
+                                    contentStyle={{ backgroundColor: '#fff', borderColor: '#000', borderWidth: '2px', borderRadius: '8px', boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)' }}
+                                    itemStyle={{ color: '#000', fontWeight: 'bold' }}
                                     formatter={(value: number, name: any) => {
                                         const percent = metrics.currentValue > 0 ? (value / metrics.currentValue) * 100 : 0;
                                         // The second argument in the return array is the label displayed in the tooltip
@@ -262,37 +264,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
 
                 {/* Summary Stats - Only show for Equities */}
                 {context !== 'MUTUAL_FUNDS' && (
-                    <div className="glass-card rounded-2xl p-6 lg:col-span-2 border border-white/5">
-                            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                            <BarChart3 className="w-5 h-5 text-primary-glow" /> Performance Summary
+                    <div className="glass-card rounded-2xl p-6 lg:col-span-2 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                            <BarChart3 className="w-5 h-5 text-primary" /> Performance Summary
                         </h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                                <p className="text-xs text-gray-400 uppercase tracking-wider">Realized P&L</p>
+                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Realized P&L</p>
                                 <p className={`text-xl font-bold mt-1 ${metrics.grossRealizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
                                     {currencySymbol}{metrics.grossRealizedPnL.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                                <p className="text-xs text-gray-400 uppercase tracking-wider">Dividends</p>
+                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Dividends</p>
                                 <p className="text-xl font-bold mt-1 text-accent-cyan">
                                     {currencySymbol}{metrics.totalDividends.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                                <p className="text-xs text-gray-400 uppercase tracking-wider">Charges & Taxes</p>
+                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Charges & Taxes</p>
                                 <p className="text-xl font-bold mt-1 text-danger">
                                     {currencySymbol}{metrics.charges.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                                <p className="text-xs text-gray-400 uppercase tracking-wider">Cash Balance</p>
+                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Cash Balance</p>
                                 <p className="text-xl font-bold mt-1 text-accent-cyan">
                                     {currencySymbol}{metrics.cashBalance.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                                <p className="text-xs text-gray-400 uppercase tracking-wider">Net Realized P&L</p>
+                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Net Realized P&L</p>
                                 <p className={`text-xl font-bold mt-1 ${metrics.netRealizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
                                     {currencySymbol}{metrics.netRealizedPnL.toLocaleString()}
                                 </p>

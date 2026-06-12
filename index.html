@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FinFolio - Portfolio Analytics</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
-              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+              sans: ['"Fredoka"', 'sans-serif'],
             },
             colors: {
               // Dynamic colors linked to CSS variables
@@ -30,7 +30,7 @@
                 green: 'var(--accent-green)',
               },
               gray: {
-                900: '#111827', // Lighter than #0B0E14
+                900: '#111827',
                 800: '#1F2937',
                 700: '#374151',
                 600: '#4B5563',
@@ -46,6 +46,7 @@
             animation: {
               'blob': 'blob 7s infinite',
               'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'bounce-in': 'bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards',
             },
             keyframes: {
               blob: {
@@ -57,6 +58,12 @@
               fadeIn: {
                 '0%': { opacity: '0', transform: 'translateY(10px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              bounceIn: {
+                '0%': { transform: 'scale(0.3)', opacity: '0' },
+                '50%': { transform: 'scale(1.05)' },
+                '70%': { transform: 'scale(0.9)' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
               }
             }
           }
@@ -65,79 +72,79 @@
     </script>
     <style>
       :root {
-        /* Default Theme (Indian Equity) - Saffron/Blue/Modern */
-        --bg-color: #111827; /* Gray 900 */
-        --surface-color: #1F2937; /* Gray 800 */
-        --border-color: rgba(255, 153, 51, 0.15); /* Saffron tint */
+        /* Default Theme (Indian Equity) - Cartoon Orange */
+        --bg-color: #FFFBEB; /* Amber 50 */
+        --surface-color: #FFFFFF;
+        --border-color: #000000;
         --primary-color: #F97316; /* Orange 500 */
-        --primary-glow: #FDBA74; /* Orange 300 */
-        --primary-dim: #431407; /* Orange 950 */
-        --accent-cyan: #0EA5E9; /* Sky 500 */
-        --accent-pink: #EC4899; /* Pink 500 */
-        --accent-green: #10B981; /* Emerald 500 */
+        --primary-glow: #FDBA74;
+        --primary-dim: #C2410C;
+        --accent-cyan: #0EA5E9;
+        --accent-pink: #EC4899;
+        --accent-green: #10B981;
       }
 
-      /* Corporate Theme (Mutual Funds) - Professional Blue/Slate */
+      /* Corporate Theme (Mutual Funds) - Cartoon Blue */
       .theme-corporate {
-        --bg-color: #0F172A; /* Slate 900 */
-        --surface-color: #1E293B; /* Slate 800 */
-        --border-color: rgba(59, 130, 246, 0.15);
+        --bg-color: #EFF6FF; /* Blue 50 */
+        --surface-color: #FFFFFF;
+        --border-color: #000000;
         --primary-color: #3B82F6; /* Blue 500 */
         --primary-glow: #93C5FD;
-        --primary-dim: #172554;
+        --primary-dim: #1E40AF;
         --accent-cyan: #38BDF8;
-        --accent-pink: #818CF8; /* Indigo */
+        --accent-pink: #818CF8;
         --accent-green: #34D399;
       }
 
-      /* Gold Theme (Gold ETF) - Luxury Black/Gold */
+      /* Gold Theme (Gold ETF) - Cartoon Yellow */
       .theme-gold {
-        --bg-color: #1c1917; /* Stone 900 */
-        --surface-color: #292524; /* Stone 800 */
-        --border-color: rgba(234, 179, 8, 0.2);
-        --primary-color: #EAB308; /* Yellow 500 (Gold) */
-        --primary-glow: #FDE047; /* Yellow 300 */
-        --primary-dim: #422006;
-        --accent-cyan: #FCD34D; /* Amber */
-        --accent-pink: #F59E0B; /* Amber 500 */
-        --accent-green: #84CC16; /* Lime */
+        --bg-color: #FEFCE8; /* Yellow 50 */
+        --surface-color: #FFFFFF;
+        --border-color: #000000;
+        --primary-color: #EAB308; /* Yellow 500 */
+        --primary-glow: #FDE047;
+        --primary-dim: #854D0E;
+        --accent-cyan: #FCD34D;
+        --accent-pink: #F59E0B;
+        --accent-green: #84CC16;
       }
 
-      /* Sleek Theme (International) - Cool Gray/Teal/Cyber */
+      /* Sleek Theme (International) - Cartoon Cyan */
       .theme-intl {
-        --bg-color: #111827; /* Gray 900 */
-        --surface-color: #1f2937; /* Gray 800 */
-        --border-color: rgba(6, 182, 212, 0.2);
+        --bg-color: #ECFEFF; /* Cyan 50 */
+        --surface-color: #FFFFFF;
+        --border-color: #000000;
         --primary-color: #06B6D4; /* Cyan 500 */
         --primary-glow: #67E8F9;
-        --primary-dim: #083344;
+        --primary-dim: #155E75;
         --accent-cyan: #22D3EE;
-        --accent-pink: #A855F7; /* Purple */
-        --accent-green: #2DD4BF; /* Teal */
+        --accent-pink: #A855F7;
+        --accent-green: #2DD4BF;
       }
 
-      /* Cash Theme (Cash Equivalents) - Emerald/Forest */
+      /* Cash Theme (Cash Equivalents) - Cartoon Green */
       .theme-cash {
-        --bg-color: #022c22; /* Emerald 950 (Dark Green) */
-        --surface-color: #064e3b; /* Emerald 900 */
-        --border-color: rgba(16, 185, 129, 0.2);
+        --bg-color: #F0FDF4; /* Green 50 */
+        --surface-color: #FFFFFF;
+        --border-color: #000000;
         --primary-color: #10B981; /* Emerald 500 */
         --primary-glow: #6EE7B7;
-        --primary-dim: #064E3B;
+        --primary-dim: #065F46;
         --accent-cyan: #34D399;
         --accent-pink: #059669;
         --accent-green: #10B981;
       }
       
-      /* Net Worth Theme (Consolidated) - Royal Violet/Dark */
+      /* Net Worth Theme (Consolidated) - Cartoon Purple */
       .theme-networth {
-        --bg-color: #0B0A19; /* Very dark purple/black */
-        --surface-color: #15132B;
-        --border-color: rgba(139, 92, 246, 0.2);
+        --bg-color: #FAF5FF; /* Purple 50 */
+        --surface-color: #FFFFFF;
+        --border-color: #000000;
         --primary-color: #8B5CF6; /* Violet 500 */
         --primary-glow: #C4B5FD;
-        --primary-dim: #2E1065;
-        --accent-cyan: #F472B6; /* Pink */
+        --primary-dim: #5B21B6;
+        --accent-cyan: #F472B6;
         --accent-pink: #A78BFA;
         --accent-green: #34D399;
       }
@@ -146,50 +153,61 @@
         height: 100%;
         min-height: 100vh;
         background-color: var(--bg-color);
-        color: #E2E8F0;
+        color: #111827; /* Dark text for contrast on light bg */
         transition: background-color 0.5s ease;
       }
       
-      /* Updated Glassmorphism */
+      /* Cartoon / Neubrutalist Styles */
+      .bg-pattern-dots {
+        background-image: radial-gradient(var(--border-color) 1px, transparent 1px);
+        background-size: 20px 20px;
+        opacity: 0.05;
+      }
+      
+      .bg-pattern-grid {
+        background-image: linear-gradient(var(--border-color) 1px, transparent 1px),
+                          linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+        background-size: 40px 40px;
+        opacity: 0.05;
+      }
+
       .glass-panel {
-        background: var(--surface-color); /* Fallback */
-        background: rgba(var(--surface-color), 0.85); /* Slightly more opaque */
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid var(--border-color);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        background: var(--surface-color);
+        border: 3px solid var(--border-color);
+        box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+        border-radius: 16px;
       }
       
       .glass-card {
         background: var(--surface-color);
-        /* Gradient overlay for lucrative feel */
-        background: linear-gradient(145deg, var(--surface-color) 0%, rgba(255,255,255,0.03) 100%);
-        backdrop-filter: blur(16px);
-        border: 1px solid var(--border-color);
-        transition: all 0.3s ease;
+        border: 3px solid var(--border-color);
+        box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+        border-radius: 12px;
+        transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
       
       .glass-card:hover {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 25px rgba(0,0,0,0.1);
-        transform: translateY(-2px);
+        transform: translate(-2px, -2px);
+        box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+        border-color: var(--border-color);
       }
 
-      /* Custom Scrollbar */
+      /* Custom Scrollbar - Chunky */
       ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 12px;
+        height: 12px;
       }
       ::-webkit-scrollbar-track {
-        background: var(--bg-color); 
+        background: var(--bg-color);
+        border-left: 2px solid var(--border-color);
       }
       ::-webkit-scrollbar-thumb {
-        background: var(--surface-color);
-        border: 1px solid var(--border-color);
-        border-radius: 3px;
+        background: var(--primary-color);
+        border: 2px solid var(--border-color);
+        border-radius: 6px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-color); 
+        background: var(--primary-dim); 
       }
       
       /* Selection Color */
@@ -210,8 +228,10 @@
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
-  </body>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>

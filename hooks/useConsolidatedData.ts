@@ -42,6 +42,7 @@ export const useConsolidatedData = () => {
         const fetchRate = async () => {
             try {
                 const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSiV0YXsSJGbeTvvuxX2u1_6br8R9JDDzXe-eH03Fj29gt43Z2cTgjiDxYt7jBRs_LG74bF4pTZmebz/pub?gid=0&single=true&output=csv');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const text = await response.text();
                 // Assuming cell A1 is the first value
                 const val = parseFloat(text.split(',')[0]);

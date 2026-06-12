@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { UploadCloud, RotateCcw, Loader2, RefreshCw, CheckCircle2, History, FileSpreadsheet, FileText, Coins, LineChart as LineChartIcon, Briefcase, Download, Save } from 'lucide-react';
+import { UploadCloud, RotateCcw, Loader2, RefreshCw, CheckCircle2, History, FileSpreadsheet, FileText, Coins, LineChart as LineChartIcon, Briefcase, Download, Save, CloudUpload } from 'lucide-react';
 import { AssetContext } from '../../types';
 import { formatLastSync } from '../../utils/common';
+import { CartoonBackground } from '../CartoonBackground';
 
 type UploadType = 'PNL' | 'LEDGER' | 'DIVIDEND' | 'TRADE_HISTORY' | 'MARKET_DATA' | 'PORTFOLIO_SNAPSHOT';
 
@@ -110,31 +111,38 @@ export const UploadView: React.FC<UploadViewProps> = ({
         return [];
     };
 
+    const getDefaultSheetId = (ctx: AssetContext) => {
+        if (ctx === 'INTERNATIONAL_EQUITY') return "1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY";
+        if (ctx === 'MUTUAL_FUNDS') return "LINKED_TO_PUB_URL_MF"; 
+        if (ctx === 'GOLD_ETF') return "LINKED_TO_PUB_URL_GOLD";
+        return "1htAAZP9eWVH0sq1BHbiS-dKJNzcP-uoBEW6GXp4N3HI";
+    };
+
     return (
-        <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
-            
+        <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10 relative">
+            <CartoonBackground icon={CloudUpload} pattern="grid" color="text-primary" opacity="opacity-[0.03]" />
             {/* Backup & Restore Section */}
-            <div>
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <div className="relative z-10">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <Save className="w-5 h-5 text-accent-cyan" /> Data Sync (Backup & Restore)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Backup Card */}
-                    <div className="glass-card rounded-2xl p-6 border border-white/5 relative overflow-hidden group hover:border-primary/30 transition-all">
-                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="glass-card rounded-2xl p-6 border-2 border-black relative overflow-hidden group hover:border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="relative z-10 flex flex-col h-full justify-between">
                             <div>
-                                <h4 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Download className="w-5 h-5 text-primary-glow" /> Export Data
+                                <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <Download className="w-5 h-5 text-primary" /> Export Data
                                 </h4>
-                                <p className="text-xs text-gray-400 mt-2">
+                                <p className="text-xs text-gray-600 mt-2">
                                     Download a single file containing your entire portfolio data across all assets. 
                                     Use this to move your data to your phone or another browser.
                                 </p>
                             </div>
                             <button 
                                 onClick={handleExport}
-                                className="mt-6 w-full py-3 bg-primary hover:bg-primary-glow text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                                className="mt-6 w-full py-3 bg-primary hover:bg-primary-glow text-white rounded-xl font-bold text-sm transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] flex items-center justify-center gap-2 border-2 border-black"
                             >
                                 <Download size={16} /> Download Backup
                             </button>
@@ -142,19 +150,19 @@ export const UploadView: React.FC<UploadViewProps> = ({
                     </div>
 
                     {/* Restore Card */}
-                    <div className="glass-card rounded-2xl p-6 border border-white/5 relative overflow-hidden group hover:border-accent-cyan/30 transition-all">
-                        <div className="absolute inset-0 bg-accent-cyan/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="glass-card rounded-2xl p-6 border-2 border-black relative overflow-hidden group hover:border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="absolute inset-0 bg-accent-cyan/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="relative z-10 flex flex-col h-full justify-between">
                             <div>
-                                <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                                <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                     <UploadCloud className="w-5 h-5 text-accent-cyan" /> Import Data
                                 </h4>
-                                <p className="text-xs text-gray-400 mt-2">
+                                <p className="text-xs text-gray-600 mt-2">
                                     Restore your portfolio from a backup file. 
                                     <span className="text-danger block mt-1 font-bold">Warning: This will overwrite data on this device.</span>
                                 </p>
                             </div>
-                            <label className="mt-6 w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-sm transition-all cursor-pointer text-center border border-white/10 flex items-center justify-center gap-2">
+                            <label className="mt-6 w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-bold text-sm transition-all cursor-pointer text-center border-2 border-black flex items-center justify-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]">
                                 <UploadCloud size={16} /> Select Backup File
                                 <input 
                                     type="file" 
@@ -170,57 +178,61 @@ export const UploadView: React.FC<UploadViewProps> = ({
 
             {/* CSV Import Section */}
             {getUploadOptions(context).length > 0 && (
-                <div>
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <div className="relative z-10">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <FileSpreadsheet className="w-5 h-5 text-accent-cyan" /> Import CSV Data ({context.replace(/_/g, ' ')})
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {getUploadOptions(context).map((type) => (
-                            <div key={type.id} className="glass-card rounded-2xl p-6 border border-white/5 hover:border-primary/30 transition-all group relative overflow-hidden">
-                                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div key={type.id} className="glass-card rounded-2xl p-6 border-2 border-black hover:border-black transition-all group relative overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                                <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div className="relative z-10">
                                 <div className="flex items-center gap-4 mb-4">
-                                    <div className="p-3 bg-white/5 rounded-xl text-primary-glow group-hover:scale-110 transition-transform">
+                                    <div className="p-3 bg-gray-100 rounded-xl text-primary group-hover:scale-110 transition-transform border-2 border-black">
                                         {type.icon}
                                     </div>
                                     <div>
-                                        <h4 className="text-lg font-bold text-white">{type.label}</h4>
-                                        <p className="text-xs text-gray-500">{type.desc}</p>
+                                        <h4 className="text-lg font-bold text-gray-900">{type.label}</h4>
+                                        <p className="text-xs text-gray-600">{type.desc}</p>
                                     </div>
                                 </div>
                                 
                                 {type.id === 'MARKET_DATA' && (
-                                    <div className="space-y-3 mb-4 bg-black/20 p-3 rounded-xl border border-white/5">
+                                    <div className="space-y-3 mb-4 bg-gray-50 p-3 rounded-xl border-2 border-black">
                                         <div>
-                                            <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1 block">Reference Date (Global)</label>
+                                            <label className="text-[10px] uppercase text-gray-600 font-bold tracking-wider mb-1 block">Reference Date (Global)</label>
                                             <input 
                                                 type="date" 
                                                 value={marketDate}
                                                 onChange={(e) => setMarketDate(e.target.value)}
-                                                className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                                                className="w-full bg-white border-2 border-black rounded-lg p-2 text-gray-900 text-sm focus:outline-none focus:border-primary transition-colors"
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1 block">Google Sheet ID</label>
+                                            <label className="text-[10px] uppercase text-gray-600 font-bold tracking-wider mb-1 block">Google Sheet ID</label>
                                                 <div className="flex gap-2">
                                                     <input 
                                                     type="text" 
                                                     value={sheetId}
-                                                    onChange={(e) => setSheetId(e.target.value)}
-                                                    placeholder="Sheet ID"
-                                                    className="flex-1 bg-black/40 border border-white/10 rounded-lg p-2 text-white text-xs font-mono focus:outline-none focus:border-primary/50 transition-colors"
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        const match = val.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                                                        setSheetId(match ? match[1] : val);
+                                                    }}
+                                                    placeholder="Sheet ID or URL"
+                                                    className="flex-1 bg-white border-2 border-black rounded-lg p-2 text-gray-900 text-xs font-mono focus:outline-none focus:border-primary transition-colors"
                                                 />
                                                 <button 
-                                                    onClick={() => { setSheetId(''); }}
-                                                    className="px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
-                                                    title="Reset Fields"
+                                                    onClick={() => { setSheetId(getDefaultSheetId(context)); }}
+                                                    className="px-2 py-1 bg-gray-100 hover:bg-gray-200 border-2 border-black rounded-lg text-gray-600 hover:text-gray-900 transition-colors"
+                                                    title="Reset to Default"
                                                 >
                                                     <RotateCcw size={14} />
                                                 </button>
                                                 <button 
                                                     onClick={onSync}
                                                     disabled={isSyncing}
-                                                    className="px-3 py-1 bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded-lg text-primary-glow text-xs font-bold transition-colors flex items-center gap-1"
+                                                    className="px-3 py-1 bg-primary hover:bg-primary-glow border-2 border-black rounded-lg text-white text-xs font-bold transition-colors flex items-center gap-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
                                                 >
                                                     {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                                                     Sync
@@ -230,7 +242,7 @@ export const UploadView: React.FC<UploadViewProps> = ({
                                     </div>
                                 )}
 
-                                <label className="flex items-center justify-center w-full py-3 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-primary/50 hover:text-primary-glow transition-all text-gray-400 text-sm font-medium bg-white/5 hover:bg-white/10">
+                                <label className="flex items-center justify-center w-full py-3 border-2 border-dashed border-black rounded-xl cursor-pointer hover:border-primary hover:text-primary transition-all text-gray-600 text-sm font-medium bg-gray-100 hover:bg-gray-200">
                                     <UploadCloud className="w-4 h-4 mr-2" />
                                     <span>Select CSV</span>
                                     <input 
@@ -242,22 +254,22 @@ export const UploadView: React.FC<UploadViewProps> = ({
                                 </label>
                                 
                                 {type.id === 'TRADE_HISTORY' && uploadMeta.trades && (
-                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.trades)}</p>
+                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full border border-success"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.trades)}</p>
                                 )}
                                 {type.id === 'PNL' && uploadMeta.pnl && (
-                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.pnl)}</p>
+                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full border border-success"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.pnl)}</p>
                                 )}
                                 {type.id === 'LEDGER' && uploadMeta.ledger && (
-                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.ledger)}</p>
+                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full border border-success"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.ledger)}</p>
                                 )}
                                 {type.id === 'DIVIDEND' && uploadMeta.dividend && (
-                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.dividend)}</p>
+                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full border border-success"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.dividend)}</p>
                                 )}
                                 {type.id === 'PORTFOLIO_SNAPSHOT' && uploadMeta.portfolio && (
-                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.portfolio)}</p>
+                                    <p className="text-[10px] text-success mt-2 flex items-center justify-center bg-success/10 py-1 rounded-full border border-success"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.portfolio)}</p>
                                 )}
                                 {type.id === 'MARKET_DATA' && uploadMeta.market && (
-                                    <p className="text-[10px] text-accent-cyan mt-2 flex items-center justify-center bg-accent-cyan/10 py-1 rounded-full"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.market)}</p>
+                                    <p className="text-[10px] text-accent-cyan mt-2 flex items-center justify-center bg-accent-cyan/10 py-1 rounded-full border border-accent-cyan"><CheckCircle2 size={10} className="mr-1"/> Synced: {formatLastSync(uploadMeta.market)}</p>
                                 )}
                                 </div>
                             </div>

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { BrainCircuit, Loader2, Sparkles } from 'lucide-react';
 import { analyzePortfolio } from '../../services/geminiService';
 import { Trade } from '../../types';
+import { CartoonBackground } from '../CartoonBackground';
 
 interface AIInsightsViewProps {
     trades: Trade[];
@@ -28,23 +29,24 @@ export const AIInsightsView: React.FC<AIInsightsViewProps> = ({ trades }) => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-                <div className="glass-card rounded-2xl p-8 border border-primary/20 bg-gradient-to-b from-primary/5 to-transparent text-center">
-                <BrainCircuit className="w-12 h-12 text-primary-glow mx-auto mb-4" />
-                <h3 className="text-2xl font-bold text-white mb-2">AI Portfolio Analyst</h3>
-                <p className="text-gray-400 mb-6">Ask Gemini anything about your trades, performance, or strategy.</p>
+        <div className="max-w-3xl mx-auto space-y-6 animate-fade-in relative">
+                <CartoonBackground icon={BrainCircuit} pattern="grid" color="text-primary" opacity="opacity-[0.03]" />
+                <div className="glass-card rounded-2xl p-8 border-2 border-black bg-white text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative z-10">
+                <BrainCircuit className="w-12 h-12 text-primary mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">AI Portfolio Analyst</h3>
+                <p className="text-gray-600 mb-6">Ask Gemini anything about your trades, performance, or strategy.</p>
                 
                 <div className="relative">
                     <textarea 
                         value={chatQuery}
                         onChange={(e) => setChatQuery(e.target.value)}
                         placeholder="e.g., Analyze my trade history for patterns..."
-                        className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-primary/50 transition-colors h-32 resize-none"
+                        className="w-full bg-white border-2 border-black rounded-xl p-4 text-gray-900 focus:outline-none focus:border-primary transition-colors h-32 resize-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
                     />
                     <button 
                         onClick={handleAnalysis}
                         disabled={isAnalyzing || !chatQuery.trim()}
-                        className="absolute bottom-4 right-4 bg-primary hover:bg-primary-glow text-white px-4 py-2 rounded-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="absolute bottom-4 right-4 bg-primary hover:bg-primary-glow text-white px-4 py-2 rounded-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
                     >
                         {isAnalyzing ? <Loader2 className="animate-spin w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
                         Analyze
@@ -53,12 +55,12 @@ export const AIInsightsView: React.FC<AIInsightsViewProps> = ({ trades }) => {
                 </div>
 
                 {chatResponse && (
-                    <div className="glass-card rounded-2xl p-6 border border-white/10 animate-fade-in">
-                        <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <div className="glass-card rounded-2xl p-6 border-2 border-black animate-fade-in shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
+                        <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                             <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" className="w-6 h-6" />
                             Analysis Result
                         </h4>
-                        <div className="prose prose-invert max-w-none text-gray-300 leading-relaxed whitespace-pre-line">
+                        <div className="prose max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
                             {chatResponse}
                         </div>
                     </div>

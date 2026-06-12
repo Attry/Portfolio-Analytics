@@ -227,6 +227,97 @@ export const parseGoldETFCSV = (content: string): ParseResult<any[]> => {
 
 export const parseIndianEquity = (type: string, rawRows: string[][]): ParseResult<any> => {
     if (type === 'TRADE_HISTORY') {
+         // Check for new format first
+         const headerIdxNew = findHeaderRowIndex(rawRows, ['Scrip Name', 'Buy Qty', 'Sell Qty']);
+         
+         if (headerIdxNew !== -1) {
+             const headers = rawRows[headerIdxNew];
+             const rows = rawRows.slice(headerIdxNew + 1);
+             
+             const idxDate = getColIndex(headers, ['Date']);
+             const idxScrip = getColIndex(headers, ['Scrip Name']);
+             const idxBuyQty = getColIndex(headers, ['Buy Qty', 'Buy Qty.']);
+             const idxBuyVal = getColIndex(headers, ['Buy Value']);
+             const idxSellQty = getColIndex(headers, ['Sell Qty', 'Sell Qty.']);
+             const idxSellVal = getColIndex(headers, ['Sell Value']);
+             
+             // Fee columns
+             const idxBrokerage = getColIndex(headers, ['Brokerage']);
+             const idxGST = getColIndex(headers, ['GST']);
+             const idxSTT = getColIndex(headers, ['STT']);
+             const idxSEBI = getColIndex(headers, ['SEBI Fees']);
+             const idxStamp = getColIndex(headers, ['Stamp Duty']);
+             const idxTxn = getColIndex(headers, ['Txn. Charges']);
+             const idxOth = getColIndex(headers, ['Oth. Charges']);
+
+             let totalCharges = 0;
+             const newTrades: Trade[] = [];
+             rows.forEach(row => {
+                 let dateRaw = clean(row[idxDate] || '');
+                 
+                 // Handle Date Formats: "15/04/25 00:00" or "15 Apr 2025 00:00:00"
+                 if (dateRaw.includes('/')) {
+                     dateRaw = dateRaw.split(' ')[0];
+                 } else {
+                     const parts = dateRaw.split(' ');
+                     if (parts.length >= 3) {
+                         dateRaw = parts.slice(0, 3).join(' ');
+                     }
+                 }
+
+                 const dateStr = parseIndianDate(dateRaw);
+                 if (!dateStr) return;
+
+                 // Calculate fees for this row
+                 const fees = [idxBrokerage, idxGST, idxSTT, idxSEBI, idxStamp, idxTxn, idxOth]
+                     .map(idx => idx !== -1 ? Math.abs(parseNum(row[idx] || '')) : 0)
+                     .reduce((a, b) => a + b, 0);
+                 totalCharges += fees;
+
+                 const ticker = clean(row[idxScrip] || '');
+                 const buyQty = Math.abs(parseNum(row[idxBuyQty] || ''));
+                 const sellQty = Math.abs(parseNum(row[idxSellQty] || ''));
+                 
+                 if (buyQty > 0) {
+                     const buyVal = Math.abs(parseNum(row[idxBuyVal] || ''));
+                     const price = buyQty > 0 ? buyVal / buyQty : 0;
+                     newTrades.push({
+                         id: Math.random().toString(36).substr(2, 9),
+                         date: dateStr,
+                         ticker,
+                         type: TradeType.BUY,
+                         quantity: buyQty,
+                         price,
+                         netAmount: -buyVal,
+                         status: 'TRADED'
+                     });
+                 }
+                 
+                 if (sellQty > 0) {
+                     const sellVal = Math.abs(parseNum(row[idxSellVal] || ''));
+                     const price = sellQty > 0 ? sellVal / sellQty : 0;
+                     newTrades.push({
+                         id: Math.random().toString(36).substr(2, 9),
+                         date: dateStr,
+                         ticker,
+                         type: TradeType.SELL,
+                         quantity: sellQty,
+                         price,
+                         netAmount: sellVal,
+                         status: 'TRADED'
+                     });
+                 }
+             });
+             
+             if (newTrades.length > 0) return { 
+                 success: true, 
+                 data: newTrades, 
+                 headers, 
+                 message: `Imported ${newTrades.length} trades (New Format).`,
+                 summary: { charges: totalCharges }
+             };
+         }
+
          const headerIdx = findHeaderRowIndex(rawRows, ['Date', 'Price']);
          if (headerIdx === -1) return { success: false, message: "Header not found. Expecting 'Date' and 'Price'." };
          
@@ -477,6 +568,16 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
                const idxDesc = getColIndex(headers, ['Description']);
                const idxProduct = getColIndex(headers, ['Produit', 'Product']);
                const idxCurrency = getColIndex(headers, ['Mouvements', 'Movement', 'Change']); 
+               const idxBalance = getColIndex(headers, ['Solde', 'Balance']);
+
+               // Extract Cash Balance from the latest entry (first row)
+               let extractedCash = 0;
+               if (idxBalance !== -1 && rows.length > 0) {
+                   extractedCash = parseNum(rows[0][idxBalance] || '');
+               } else {
+                   // Fallback to footer search
+                   extractedCash = findValueInFooter(rawRows, ['Closing Balance', 'Balance']) || 0;
+               }
                
                const newDividends: DividendRecord[] = [];
                
@@ -520,20 +621,20 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
                    }
                });
 
-               if (newDividends.length > 0) {
-                   return { success: true, data: newDividends, headers, message: `Imported ${newDividends.length} Dividend records.`, summary: { dividends: 0 } };
+               if (newDividends.length > 0 || extractedCash !== 0) {
+                   return { 
+                       success: true, 
+                       data: newDividends, 
+                       headers, 
+                       message: `Imported ${newDividends.length} Dividend records. Cash Balance: €${extractedCash}`, 
+                       summary: { cash: extractedCash, dividends: 0 } 
+                   };
                }
                return { success: false, message: "No rows with Description 'Dividende' found." };
            }
            return { success: false, message: "Could not find Degiro Account headers (Date, Description)." };
     }
     else if (type === 'PORTFOLIO_SNAPSHOT') {
-          let extractedCash = 0;
-          if (rawRows.length > 1 && rawRows[1].length > 6) {
-              const cashVal = parseNum(rawRows[1][6]);
-              if (cashVal !== 0) extractedCash = cashVal;
-          }
-
           const headerIdx = findHeaderRowIndex(rawRows, ['Produit', 'Clôture']); 
           if (headerIdx === -1) return { success: false, message: "Could not find Degiro Portfolio headers (Produit, Clôture)." };
 
@@ -542,7 +643,23 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
           
           const idxProduct = getColIndex(headers, ['Produit', 'Product']);
           const idxPrice = getColIndex(headers, ['Clôture', 'Close', 'Price']);
+          const idxValue = getColIndex(headers, ['Montant en EUR', 'Value', 'Total Value', 'Valeur']);
           
+          let extractedCash = 0;
+          // Find Cash Row (usually first, but search to be safe)
+          const cashRow = rows.find(r => {
+              const prod = clean(r[idxProduct] || '').toUpperCase();
+              return prod.includes('CASH & CASH') || prod.includes('ESPÈCES') || prod.includes('FLATEX');
+          });
+
+          if (cashRow && idxValue !== -1) {
+              extractedCash = parseNum(cashRow[idxValue] || '');
+          } else if (rawRows.length > 1 && rawRows[1].length > 6) {
+               // Fallback to fixed position if search fails
+               const cashVal = parseNum(rawRows[1][6]);
+               if (cashVal !== 0) extractedCash = cashVal;
+          }
+
           const newPrices: Record<string, number> = {};
           let count = 0;
           
@@ -550,14 +667,15 @@ export const parseInternationalEquity = (type: string, rawRows: string[][]): Par
               const ticker = clean(row[idxProduct] || '').toUpperCase();
               const price = Math.abs(parseNum(row[idxPrice] || ''));
               
-              if (ticker && price > 0) {
+              // Skip Cash row for prices
+              if (ticker && !ticker.includes('CASH & CASH') && !ticker.includes('ESPÈCES') && price > 0) {
                   newPrices[ticker] = price;
                   count++;
               }
           });
           
-          if (count > 0) {
-              return { success: true, data: newPrices, headers, message: `Updated prices for ${count} stocks.`, summary: { cash: extractedCash } };
+          if (count > 0 || extractedCash !== 0) {
+              return { success: true, data: newPrices, headers, message: `Updated prices for ${count} stocks. Cash: €${extractedCash}`, summary: { cash: extractedCash } };
           }
           return { success: false, message: "No valid pricing data found in Portfolio CSV." };
     }

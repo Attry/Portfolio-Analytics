@@ -31,7 +31,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
   const {
       trades, metrics, watchlist, priceData, uploadMeta, sheetId, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL, globalMarketDate,
       processFile, addToWatchlist, removeFromWatchlist, updateWatchlistItem, saveSheetId, updateGlobalDate,
-      addSalary, updateCashHolding, deleteCashHolding
+      addSalary, updateCashHolding, deleteCashHolding, addTrade
   } = usePortfolioData(context);
 
   const [isFetchingSheet, setIsFetchingSheet] = useState(false);
@@ -56,7 +56,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         }
 
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed: ${response.statusText}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText || 'Unknown Error'}`);
         const csvText = await response.text();
         if (csvText.toLowerCase().includes('<!doctype html>')) throw new Error("Access denied. Publish sheet to web.");
         
@@ -110,7 +110,7 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-8 gap-4 md:gap-0">
             <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-white tracking-normal">{toTitleCase(context)}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-normal">{toTitleCase(context)}</h2>
             </div>
             
             <div className="flex flex-col-reverse md:flex-row items-center gap-4 w-full md:w-auto">
@@ -118,11 +118,11 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                  {currentView === ViewState.DASHBOARD && (
                      <div className="relative group w-full md:w-auto">
                         <div 
-                            className="flex items-center justify-center gap-3 bg-surface border border-white/10 rounded-xl px-5 py-2.5 shadow-sm hover:border-primary/50 hover:bg-white/5 transition-all cursor-pointer w-full md:w-auto" 
+                            className="flex items-center justify-center gap-3 bg-white border-2 border-black rounded-xl px-5 py-2.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all cursor-pointer w-full md:w-auto" 
                             onClick={() => dateInputRef.current?.showPicker()}
                         >
-                            <Calendar className="w-4 h-4 text-primary group-hover:text-primary-glow" />
-                            <span className="text-sm font-bold text-gray-200 font-mono tracking-wide">
+                            <Calendar className="w-4 h-4 text-primary group-hover:text-primary-dim" />
+                            <span className="text-sm font-bold text-gray-900 font-mono tracking-wide">
                                 {globalMarketDate || 'Select Date'}
                             </span>
                         </div>
@@ -139,12 +139,12 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
                  {/* Status & Sync */}
                  <div className="flex items-center justify-between w-full md:w-auto gap-4">
                     <div className="text-left md:ml-2">
-                        <p className="text-[10px] md:text-xs text-gray-400 font-medium">Market Data</p>
+                        <p className="text-[10px] md:text-xs text-gray-600 font-medium">Market Data</p>
                         <p className={`text-xs font-bold ${metrics.hasLiveData ? 'text-success' : 'text-warning'}`}>
                             {metrics.hasLiveData ? 'LIVE' : 'OFFLINE'}
                         </p>
                     </div>
-                    <button onClick={() => handleGoogleSheetFetch(false)} className="p-2.5 bg-surface hover:bg-white/10 rounded-xl border border-white/10 transition-colors shadow-sm" title="Sync Market Data">
+                    <button onClick={() => handleGoogleSheetFetch(false)} className="p-2.5 bg-white hover:bg-gray-50 rounded-xl border-2 border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]" title="Sync Market Data">
                         <RefreshCw size={18} className={`text-primary ${isFetchingSheet ? 'animate-spin' : ''}`} />
                     </button>
                  </div>
@@ -155,12 +155,13 @@ const PortfolioDashboard: React.FC<{ context: AssetContext, currentView: ViewSta
         {currentView === ViewState.HOLDINGS && <HoldingsView metrics={metrics} currencySymbol={currencySymbol} context={context} onUpdateHolding={updateCashHolding} onDeleteHolding={deleteCashHolding} />}
         
         {/* Render restricted views only if not Mutual Funds/Gold ETF/Cash (just extra safety, sidebar handles nav) */}
-        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.TRANSACTIONS && <TransactionsView trades={trades} metrics={metrics} currencySymbol={currencySymbol} />}
+        {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.TRANSACTIONS && <TransactionsView trades={trades} metrics={metrics} currencySymbol={currencySymbol} onAddTrade={addTrade} />}
         {context !== 'MUTUAL_FUNDS' && context !== 'GOLD_ETF' && context !== 'CASH_EQUIVALENTS' && currentView === ViewState.WATCHLIST && (
             <WatchlistView 
                 watchlist={watchlist} 
                 priceData={priceData} 
                 currencySymbol={currencySymbol} 
+                context={context}
                 onAdd={addToWatchlist}
                 onRemove={removeFromWatchlist}
                 onUpdate={updateWatchlistItem}
@@ -222,7 +223,7 @@ const App: React.FC = () => {
   const isAutoHide = autoHideViews.includes(view);
 
   return (
-    <div className={`flex h-screen bg-background text-white font-sans selection:bg-primary/30 ${themeClass}`}>
+    <div className={`flex h-screen bg-background text-gray-900 font-sans selection:bg-primary/30 ${themeClass}`}>
         <Sidebar 
             currentView={view} 
             setView={setView} 
@@ -233,14 +234,14 @@ const App: React.FC = () => {
         />
 
         {/* Mobile Header */}
-        <div className="md:hidden fixed top-0 left-0 w-full z-40 bg-background/90 backdrop-blur-md border-b border-border p-4 flex justify-between items-center h-16 shadow-lg">
+        <div className="md:hidden fixed top-0 left-0 w-full z-40 bg-background/90 backdrop-blur-md border-b-2 border-black p-4 flex justify-between items-center h-16 shadow-lg">
              <div className="flex items-center gap-3">
-                <div className="bg-primary/20 p-1.5 rounded-lg"><WalletCards className="w-5 h-5 text-primary" /></div>
-                <span className="font-bold text-lg text-white tracking-wide">Fin<span className="text-primary">Folio</span></span>
+                <div className="bg-primary/20 p-1.5 rounded-lg border-2 border-black"><WalletCards className="w-5 h-5 text-primary" /></div>
+                <span className="font-bold text-lg text-gray-900 tracking-wide">Fin<span className="text-primary">Folio</span></span>
              </div>
              <button 
                 onClick={() => setIsMobileMenuOpen(true)} 
-                className="p-2 text-gray-300 hover:text-white bg-surface rounded-lg active:scale-95 transition-all"
+                className="p-2 text-gray-600 hover:text-gray-900 bg-white border-2 border-black rounded-lg active:scale-95 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
              >
                 <Menu size={24} />
              </button>

@@ -76,9 +76,14 @@ export const usePortfolioData = (context: AssetContext) => {
 
     const [summary, setSummary] = useState(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.SUMMARY) || '{}'));
     const [sheetId, setSheetId] = useState<string>(() => {
-        const saved = localStorage.getItem(STORAGE_KEYS.SHEET_ID);
+        let saved = localStorage.getItem(STORAGE_KEYS.SHEET_ID);
         if (saved) {
-             try { return JSON.parse(saved) as string; } catch(e) { return saved; }
+             try { saved = JSON.parse(saved) as string; } catch(e) {}
+             // Sanitize: If it's a URL, extract ID
+             const match = saved?.match(/\/d\/([a-zA-Z0-9-_]+)/);
+             if (match) return match[1];
+             // If it looks like a valid ID (alphanumeric, no spaces, reasonable length)
+             if (saved && /^[a-zA-Z0-9-_]{10,}$/.test(saved)) return saved;
         }
         if (context === 'INTERNATIONAL_EQUITY') return "1zQFW9FHFoyvw4uZR4z3klFeoCIGJPUlq7QuDYwz4lEY";
         if (context === 'MUTUAL_FUNDS') return "LINKED_TO_PUB_URL_MF"; 
@@ -115,6 +120,13 @@ export const usePortfolioData = (context: AssetContext) => {
         localStorage.setItem('GLOBAL_MARKET_DATE', date);
         updateMeta({ marketDate: date });
     }
+
+    const addTrade = (trade: Trade) => {
+        const updated = [...trades, trade];
+        setTrades(updated);
+        persist(STORAGE_KEYS.TRADES, updated);
+        updateMeta({ trades: new Date().toISOString() });
+    };
 
     // -- Actions --
     const clearAllData = () => {
@@ -482,6 +494,6 @@ export const usePortfolioData = (context: AssetContext) => {
         trades, pnlData, ledgerData, dividendData, priceData, watchlist, uploadMeta, sheetId,
         metrics, lastUploadPreview, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL, globalMarketDate,
         processFile, clearAllData, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate,
-        addSalary, updateCashHolding, deleteCashHolding
+        addSalary, updateCashHolding, deleteCashHolding, addTrade
     };
 };
