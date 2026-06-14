@@ -12,7 +12,7 @@ interface StatsCardProps {
 
 export const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, changeLabel, isPositive, icon }) => {
   return (
-    <div className="glass-card rounded-2xl p-6 relative overflow-hidden group border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all bg-white">
+    <div className="glass-card rounded-2xl p-6 relative overflow-hidden group border border-gray-200 shadow-md hover:shadow-lg transition-all bg-white">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-pattern-dots opacity-[0.4] pointer-events-none" />
         
@@ -32,7 +32,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, chan
           <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">{title}</p>
           <h3 className="text-2xl font-bold text-gray-900 mt-1.5 tracking-tight">{value}</h3>
         </div>
-        <div className="p-2.5 bg-white rounded-xl border-2 border-black group-hover:border-primary group-hover:bg-primary/10 transition-colors">
+        <div className="p-2.5 bg-white rounded-xl border border-gray-200 group-hover:border-primary group-hover:bg-primary/10 transition-colors">
           {React.isValidElement(icon) 
             ? React.cloneElement(icon as React.ReactElement<any>, { className: "w-5 h-5 text-gray-700 group-hover:text-primary transition-colors" })
             : icon

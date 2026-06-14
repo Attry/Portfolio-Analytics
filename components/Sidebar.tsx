@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
                     setView(ViewState.DASHBOARD);
                 }
             }}
-            className={`w-full flex items-center justify-between group cursor-pointer transition-all duration-200 mb-1 px-3 py-2.5 rounded-xl border-2 border-transparent ${isActive && !isMain ? 'bg-black/5 border-black' : 'hover:bg-black/5 hover:border-black/10'}`}
+            className={`w-full flex items-center justify-between group cursor-pointer transition-all duration-200 mb-1 px-3 py-2.5 rounded-xl border-2 border-transparent ${isActive && !isMain ? 'bg-black/5 border-gray-200' : 'hover:bg-black/5 hover:border-gray-200/10'}`}
         >
             <span className={`text-sm font-semibold transition-colors ${isActive ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'}`}>
                 {label}
@@ -100,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
             className={`w-64 glass-panel flex flex-col h-[100dvh] fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out group/sidebar
                 ${mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
                 md:translate-x-0
-                ${isAutoHide ? 'md:-translate-x-[calc(100%-20px)] md:hover:translate-x-0 md:shadow-none md:hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]' : ''}
+                ${isAutoHide ? 'md:-translate-x-[calc(100%-20px)] md:hover:translate-x-0 md:shadow-none md:hover:shadow-md shadow-gray-200/50' : ''}
             `}
         >
         {/* Glow Effect Top Left */}
@@ -122,13 +122,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
         </button>
 
         {/* TradeView Button -> Navigates to Net Worth Overview */}
-        <div className="p-6 border-b-2 border-black relative z-10 shrink-0">
+        <div className="p-6 border-b-2 border-gray-200 relative z-10 shrink-0">
             <button 
                 onClick={() => { setView(ViewState.NET_WORTH); setMobileOpen(false); }}
-                className="flex items-center gap-3 w-full group hover:bg-black/5 p-2 -ml-2 rounded-xl transition-all border-2 border-transparent hover:border-black"
+                className="flex items-center gap-3 w-full group hover:bg-black/5 p-2 -ml-2 rounded-xl transition-all border-2 border-transparent hover:border-gray-200"
                 title="Go to Net Worth Overview"
             >
-                <div className="bg-primary p-2.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
+                <div className="bg-primary p-2.5 rounded-xl border border-gray-200 shadow-sm group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
                     <WalletCards className="text-white w-6 h-6" />
                 </div>
                 <div className="text-left">
@@ -143,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
         <nav className="flex-1 p-4 space-y-2 relative z-10 animate-fade-in overflow-y-auto custom-scrollbar">
             
             {/* Asset Context Switcher */}
-            <div className="mb-6 pb-4 border-b-2 border-black">
+            <div className="mb-6 pb-4 border-b-2 border-gray-200">
                 <div className="glass-card rounded-xl p-3 shadow-none">
                     <div className="space-y-1">
                         <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-2 ml-1">Asset Class</p>
@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
 
                         {/* Dropdown for other assets */}
                         {showAssetsMenu && (
-                            <div className="pt-2 animate-fade-in border-t-2 border-black mt-2">
+                            <div className="pt-2 animate-fade-in border-t-2 border-gray-200 mt-2">
                                 {otherAssets.map(asset => renderAssetButton(asset.label, asset.context))}
                             </div>
                         )}
@@ -160,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
 
                     <button 
                         onClick={() => setShowAssetsMenu(!showAssetsMenu)}
-                        className="w-full mt-2 pt-2 border-t-2 border-black text-[11px] font-bold text-primary hover:text-primary-dim transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
+                        className="w-full mt-2 pt-2 border-t-2 border-gray-200 text-[11px] font-bold text-primary hover:text-primary-dim transition-colors flex items-center justify-center gap-1 uppercase tracking-wider"
                     >
                         {showAssetsMenu ? 'Show Less' : 'Switch Asset'}
                         {showAssetsMenu ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -177,8 +177,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
                     onClick={() => handleViewChange(item.id)}
                     className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group mb-2 border-2 ${
                     currentView === item.id
-                        ? 'bg-primary text-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]'
-                        : 'text-gray-600 border-transparent hover:bg-white hover:text-gray-900 hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                        ? 'bg-primary text-white border-gray-200 shadow-md border border-gray-200 translate-x-[-2px] translate-y-[-2px]'
+                        : 'text-gray-600 border-transparent hover:bg-white hover:text-gray-900 hover:border-gray-200 hover:shadow-md border border-gray-200'
                     }`}
                 >
                     <span className={`transition-colors duration-300 ${currentView === item.id ? 'text-white' : 'text-gray-500 group-hover:text-gray-900'}`}>
@@ -186,7 +186,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, currentC
                     </span>
                     <span className="font-semibold tracking-wide text-sm">{item.label}</span>
                     {currentView === item.id && (
-                        <div className="ml-auto w-2 h-2 rounded-full bg-white border border-black"></div>
+                        <div className="ml-auto w-2 h-2 rounded-full bg-white border border-gray-200"></div>
                     )}
                 </button>
                 ))}

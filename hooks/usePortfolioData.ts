@@ -35,7 +35,9 @@ const getStorageKeys = (context: AssetContext) => {
         SHEET_ID: `${prefix}_sheet_id`,
         MF_HOLDINGS: `${prefix}_holdings`, 
         GOLD_HOLDINGS: `${prefix}_holdings`,
-        CASH_HOLDINGS: `${prefix}_holdings` 
+        CASH_HOLDINGS: `${prefix}_holdings`,
+        BASE_TRADES: `${prefix}_base_trades`,
+        BASE_SUMMARY: `${prefix}_base_summary`
     };
 };
 
@@ -48,13 +50,44 @@ export const usePortfolioData = (context: AssetContext) => {
     const STORAGE_KEYS = useMemo(() => getStorageKeys(context), [context]);
 
     // -- State --
-    const [trades, setTrades] = useState<Trade[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.TRADES) || '[]'));
+    const [trades, setTrades] = useState<Trade[]>(() => {
+        const storedTrades = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRADES) || '[]');
+        const storedBaseTrades = JSON.parse(localStorage.getItem(STORAGE_KEYS.BASE_TRADES) || '[]');
+        let combined = [...storedBaseTrades, ...storedTrades];
+        
+        // Deduplicate trades by ID to fix any corruption from double-migration
+        const uniqueTrades: Trade[] = [];
+        const seen = new Set();
+        for (const t of combined) {
+            if (!seen.has(t.id)) {
+                seen.add(t.id);
+                uniqueTrades.push(t);
+            }
+        }
+
+        if (storedBaseTrades && storedBaseTrades.length > 0 || uniqueTrades.length !== storedTrades.length) {
+            localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(uniqueTrades));
+            localStorage.removeItem(STORAGE_KEYS.BASE_TRADES);
+        }
+        return uniqueTrades;
+    });
     const [pnlData, setPnlData] = useState<PnLRecord[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.PNL) || '[]'));
     const [ledgerData, setLedgerData] = useState<LedgerRecord[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.LEDGER) || '[]'));
     const [dividendData, setDividendData] = useState<DividendRecord[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.DIVIDENDS) || '[]'));
     const [priceData, setPriceData] = useState<Record<string, number>>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.PRICES) || '{}'));
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.WATCHLIST) || '[]'));
     const [uploadMeta, setUploadMeta] = useState<UploadMeta>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.META) || '{}'));
+    
+    // Base Baseline State
+    const [baseTrades, setBaseTrades] = useState<Trade[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.BASE_TRADES) || '[]'));
+    const [baseSummary, setBaseSummary] = useState<{ charges: number; realizedPnL: number; dividends: number }>(() => {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEYS.BASE_SUMMARY) || '{"charges":0,"realizedPnL":0,"dividends":0}');
+        } catch (e) {
+            return { charges: 0, realizedPnL: 0, dividends: 0 };
+        }
+    });
+
     
     // MF Specific State
     const [mfHoldings, setMfHoldings] = useState<any[]>(() => JSON.parse(localStorage.getItem(STORAGE_KEYS.MF_HOLDINGS) || '[]'));
@@ -121,19 +154,192 @@ export const usePortfolioData = (context: AssetContext) => {
         updateMeta({ marketDate: date });
     }
 
-    const addTrade = (trade: Trade) => {
-        const updated = [...trades, trade];
+    const addTrade = (trade: Trade, cashStrategy: { type: 'KEEP' | 'AUTO' | 'MANUAL', manualValue?: number } = { type: 'AUTO' }) => {
+        const isTrade = trade.type === 'BUY' || trade.type === 'SELL';
+        const fee = isTrade ? Math.abs(trade.quantity * trade.price) * 0.001 : 0;
+        
+        let newNetAmount = trade.netAmount;
+        if (isTrade) {
+            newNetAmount = trade.type === 'BUY' ? trade.netAmount - fee : trade.netAmount - fee;
+        }
+
+        const finalTrade = { ...trade, netAmount: newNetAmount };
+        const updated = [...trades, finalTrade];
+        
         setTrades(updated);
         persist(STORAGE_KEYS.TRADES, updated);
         updateMeta({ trades: new Date().toISOString() });
+
+        // Update charges and cash
+        let currentCash = summary.cash;
+        if (currentCash === undefined && ledgerData.length > 0) {
+             const sorted = [...ledgerData].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+             if (sorted.length > 0) currentCash = sorted[0].balance;
+        }
+
+        let newCash = currentCash;
+        if (cashStrategy.type === 'AUTO') {
+            newCash = (currentCash || 0) + newNetAmount;
+        } else if (cashStrategy.type === 'MANUAL' && cashStrategy.manualValue !== undefined) {
+            newCash = cashStrategy.manualValue;
+        }
+
+        updateSummary({ 
+            charges: (summary.charges || 0) + fee,
+            cash: newCash
+        });
+    };
+
+    const updateTrade = (updatedTrade: Trade, cashStrategy: { type: 'KEEP' | 'AUTO' | 'MANUAL', manualValue?: number } = { type: 'AUTO' }) => {
+        const oldTradeInTrades = trades.find(t => t.id === updatedTrade.id);
+        const oldTradeInBase = baseTrades.find(t => t.id === updatedTrade.id);
+        const oldTrade = oldTradeInTrades || oldTradeInBase;
+        
+        if (!oldTrade) return;
+
+        const isTrade = updatedTrade.type === 'BUY' || updatedTrade.type === 'SELL';
+        const fee = isTrade ? Math.abs(updatedTrade.quantity * updatedTrade.price) * 0.001 : 0;
+        
+        const oldIsTrade = oldTrade.type === 'BUY' || oldTrade.type === 'SELL';
+        const oldFee = oldIsTrade ? Math.abs(oldTrade.quantity * oldTrade.price) * 0.001 : 0;
+
+        let newNetAmount = updatedTrade.netAmount;
+        if (isTrade) {
+            newNetAmount = updatedTrade.type === 'BUY' 
+                ? -(updatedTrade.quantity * updatedTrade.price) - fee 
+                : (updatedTrade.quantity * updatedTrade.price) - fee;
+            updatedTrade.netAmount = newNetAmount;
+        }
+
+        const feeDiff = fee - oldFee;
+        const netAmountDiff = newNetAmount - oldTrade.netAmount;
+
+        if (oldTradeInTrades) {
+            const updated = trades.map(t => t.id === updatedTrade.id ? updatedTrade : t);
+            setTrades(updated);
+            persist(STORAGE_KEYS.TRADES, updated);
+            updateMeta({ trades: new Date().toISOString() });
+        } else if (oldTradeInBase) {
+            const updated = baseTrades.map(t => t.id === updatedTrade.id ? updatedTrade : t);
+            setBaseTrades(updated);
+            persist(STORAGE_KEYS.BASE_TRADES, updated);
+        }
+
+        let currentCash = summary.cash;
+        if (currentCash === undefined && ledgerData.length > 0) {
+             const sorted = [...ledgerData].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+             if (sorted.length > 0) currentCash = sorted[0].balance;
+        }
+
+        let newCash = currentCash;
+        if (cashStrategy.type === 'AUTO') {
+            newCash = (currentCash || 0) + netAmountDiff;
+        } else if (cashStrategy.type === 'MANUAL' && cashStrategy.manualValue !== undefined) {
+            newCash = cashStrategy.manualValue;
+        }
+
+        updateSummary({ 
+            charges: (summary.charges || 0) + feeDiff,
+            cash: newCash
+        });
+    };
+
+    const deleteTrade = (id: string, cashStrategy: { type: 'KEEP' | 'AUTO' | 'MANUAL', manualValue?: number } = { type: 'AUTO' }) => {
+        const oldTradeInTrades = trades.find(t => t.id === id);
+        const oldTradeInBase = baseTrades.find(t => t.id === id);
+        const oldTrade = oldTradeInTrades || oldTradeInBase;
+        
+        if (!oldTrade) return;
+
+        const oldIsTrade = oldTrade.type === 'BUY' || oldTrade.type === 'SELL';
+        const oldFee = oldIsTrade ? Math.abs(oldTrade.quantity * oldTrade.price) * 0.001 : 0;
+
+        if (oldTradeInTrades) {
+            const updated = trades.filter(t => t.id !== id);
+            setTrades(updated);
+            persist(STORAGE_KEYS.TRADES, updated);
+            updateMeta({ trades: new Date().toISOString() });
+        } else if (oldTradeInBase) {
+            const updated = baseTrades.filter(t => t.id !== id);
+            setBaseTrades(updated);
+            persist(STORAGE_KEYS.BASE_TRADES, updated);
+        }
+
+        let currentCash = summary.cash;
+        if (currentCash === undefined && ledgerData.length > 0) {
+             const sorted = [...ledgerData].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+             if (sorted.length > 0) currentCash = sorted[0].balance;
+        }
+
+        let newCash = currentCash;
+        if (cashStrategy.type === 'AUTO') {
+            newCash = (currentCash || 0) - oldTrade.netAmount;
+        } else if (cashStrategy.type === 'MANUAL' && cashStrategy.manualValue !== undefined) {
+            newCash = cashStrategy.manualValue;
+        }
+
+        updateSummary({ 
+            charges: Math.max(0, (summary.charges || 0) - oldFee),
+            cash: newCash
+        });
+    };
+
+    const convertToBaseData = () => {
+        const accumulatedNewTrades = [...baseTrades, ...trades];
+        const currentDividends = dividendData.reduce((acc, curr) => acc + curr.amount, 0);
+        const accumulatedDividends = baseSummary.dividends + Math.max(currentDividends, summary.dividends || 0);
+        const accumulatedCharges = baseSummary.charges + (summary.charges || 0);
+
+        const newBaseSummary = {
+            charges: accumulatedCharges,
+            realizedPnL: 0, // Realized PnL is computed dynamically from allTrades, so we don't store it here to avoid double counting
+            dividends: accumulatedDividends
+        };
+
+        // Persist Base Values
+        setBaseTrades(accumulatedNewTrades);
+        persist(STORAGE_KEYS.BASE_TRADES, accumulatedNewTrades);
+
+        setBaseSummary(newBaseSummary);
+        persist(STORAGE_KEYS.BASE_SUMMARY, newBaseSummary);
+
+        // Clear active uploaded files
+        setTrades([]);
+        persist(STORAGE_KEYS.TRADES, []);
+        
+        setPnlData([]);
+        persist(STORAGE_KEYS.PNL, []);
+        
+        setLedgerData([]);
+        persist(STORAGE_KEYS.LEDGER, []);
+        
+        setDividendData([]);
+        persist(STORAGE_KEYS.DIVIDENDS, []);
+        
+        setSummary({ cash: summary.cash });
+        persist(STORAGE_KEYS.SUMMARY, { cash: summary.cash });
+
+        updateMeta({
+            trades: undefined,
+            pnl: undefined,
+            ledger: undefined,
+            dividend: undefined
+        });
+    };
+
+    const clearBaseData = () => {
+        setBaseTrades([]);
+        localStorage.removeItem(STORAGE_KEYS.BASE_TRADES);
+
+        const defaultSummary = { charges: 0, realizedPnL: 0, dividends: 0 };
+        setBaseSummary(defaultSummary);
+        localStorage.removeItem(STORAGE_KEYS.BASE_SUMMARY);
     };
 
     // -- Actions --
     const clearAllData = () => {
-        if (!confirm(`Clear all data for ${context}?`)) return;
         Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k as string));
         setTrades([]); setPnlData([]); setLedgerData([]); setDividendData([]); setPriceData({}); setWatchlist([]); setUploadMeta({}); setSummary({}); setMfHoldings([]); setGoldHoldings([]); setCashHoldings([]);
-        alert('Data cleared.');
     };
 
     // -- Watchlist Actions --
@@ -230,7 +436,20 @@ export const usePortfolioData = (context: AssetContext) => {
             } else if (context === 'INDIAN_EQUITY') {
                 result = parseIndianEquity(type, rawRows);
                 if (result.success && result.data) {
-                    if (type === 'TRADE_HISTORY') { setTrades(result.data); persist(STORAGE_KEYS.TRADES, result.data); updateMeta({ trades: new Date().toISOString() }); }
+                    if (type === 'TRADE_HISTORY') { 
+                        const deduplicated = (result.data as Trade[]).filter(newTrade => {
+                            return !baseTrades.some(baseTrade => 
+                                baseTrade.ticker === newTrade.ticker &&
+                                baseTrade.date === newTrade.date &&
+                                baseTrade.type === newTrade.type &&
+                                Math.abs(baseTrade.quantity - newTrade.quantity) < 0.001 &&
+                                Math.abs(baseTrade.price - newTrade.price) < 0.001
+                            );
+                        });
+                        setTrades(deduplicated); 
+                        persist(STORAGE_KEYS.TRADES, deduplicated); 
+                        updateMeta({ trades: new Date().toISOString() }); 
+                    }
                     if (type === 'PNL') { setPnlData(result.data); persist(STORAGE_KEYS.PNL, result.data); updateMeta({ pnl: new Date().toISOString() }); }
                     if (type === 'LEDGER') { setLedgerData(result.data); persist(STORAGE_KEYS.LEDGER, result.data); updateMeta({ ledger: new Date().toISOString() }); }
                     if (type === 'DIVIDEND') { setDividendData(result.data); persist(STORAGE_KEYS.DIVIDENDS, result.data); updateMeta({ dividend: new Date().toISOString() }); }
@@ -238,7 +457,20 @@ export const usePortfolioData = (context: AssetContext) => {
             } else if (context === 'INTERNATIONAL_EQUITY') {
                 result = parseInternationalEquity(type, rawRows);
                 if (result.success && result.data) {
-                    if (type === 'TRADE_HISTORY') { setTrades(result.data); persist(STORAGE_KEYS.TRADES, result.data); updateMeta({ trades: new Date().toISOString() }); }
+                    if (type === 'TRADE_HISTORY') { 
+                        const deduplicated = (result.data as Trade[]).filter(newTrade => {
+                            return !baseTrades.some(baseTrade => 
+                                baseTrade.ticker === newTrade.ticker &&
+                                baseTrade.date === newTrade.date &&
+                                baseTrade.type === newTrade.type &&
+                                Math.abs(baseTrade.quantity - newTrade.quantity) < 0.001 &&
+                                Math.abs(baseTrade.price - newTrade.price) < 0.001
+                            );
+                        });
+                        setTrades(deduplicated); 
+                        persist(STORAGE_KEYS.TRADES, deduplicated); 
+                        updateMeta({ trades: new Date().toISOString() }); 
+                    }
                     if (type === 'LEDGER') { 
                         setDividendData(result.data); 
                         persist(STORAGE_KEYS.DIVIDENDS, result.data); 
@@ -397,12 +629,14 @@ export const usePortfolioData = (context: AssetContext) => {
             };
        }
 
-        const { grossRealizedPnL, totalInvested, holdings, tradePerformance } = calculateFIFO(trades);
+        const allTrades = [...baseTrades, ...trades];
+        const { grossRealizedPnL: computedGrossPnL, totalInvested, holdings, tradePerformance } = calculateFIFO(allTrades);
         
-        let charges = summary.charges || 0;
-        let totalDividends = Math.max(dividendData.reduce((acc, curr) => acc + curr.amount, 0), summary.dividends || 0);
-        let cashBalance = summary.cash || 0;
-        if (ledgerData.length > 0 && cashBalance === 0) {
+        let charges = baseSummary.charges + (summary.charges || 0);
+        let grossRealizedPnL = computedGrossPnL;
+        let totalDividends = baseSummary.dividends + Math.max(dividendData.reduce((acc, curr) => acc + curr.amount, 0), summary.dividends || 0);
+        let cashBalance = summary.cash !== undefined ? summary.cash : 0;
+        if (ledgerData.length > 0 && summary.cash === undefined) {
             const sorted = [...ledgerData].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             if(sorted.length > 0) cashBalance = sorted[0].balance;
         }
@@ -455,6 +689,7 @@ export const usePortfolioData = (context: AssetContext) => {
           });
 
         const currentValue = totalInvested + totalUnrealizedPnL + cashBalance;
+        const totalCapital = totalInvested + cashBalance;
         const netRealizedPnL = grossRealizedPnL - Math.abs(charges);
 
         const finalHoldings = portfolioHoldings.map(h => ({
@@ -473,9 +708,9 @@ export const usePortfolioData = (context: AssetContext) => {
         finalHoldings.sort((a, b) => b.portfolioPct - a.portfolioPct);
 
         let xirr = 0;
-        if (trades.length > 0) {
+        if (allTrades.length > 0) {
              try {
-                const flows = trades.map(t => ({ amount: t.netAmount, date: new Date(t.date) }));
+                const flows = allTrades.map(t => ({ amount: t.netAmount, date: new Date(t.date) }));
                 const val = calculateXIRR(flows, totalInvested + totalUnrealizedPnL);
                 if (!isNaN(val) && isFinite(val)) xirr = val * 100;
              } catch(e) {}
@@ -488,12 +723,13 @@ export const usePortfolioData = (context: AssetContext) => {
             hasLiveData: Object.keys(priceData).length > 0,
             tradePerformance
         };
-    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings, goldHoldings, cashHoldings, globalMarketDate]);
+    }, [trades, pnlData, ledgerData, dividendData, priceData, summary, context, mfHoldings, goldHoldings, cashHoldings, globalMarketDate, baseTrades, baseSummary]);
 
     return {
         trades, pnlData, ledgerData, dividendData, priceData, watchlist, uploadMeta, sheetId,
         metrics, lastUploadPreview, MUTUAL_FUND_SHEET_URL, GOLD_ETF_SHEET_URL, globalMarketDate,
+        baseTrades, baseSummary, convertToBaseData, clearBaseData,
         processFile, clearAllData, addToWatchlist, removeFromWatchlist, updateWatchlistItem, updateMeta, saveSheetId, updateGlobalDate,
-        addSalary, updateCashHolding, deleteCashHolding, addTrade
+        addSalary, updateCashHolding, deleteCashHolding, addTrade, updateTrade, deleteTrade
     };
 };

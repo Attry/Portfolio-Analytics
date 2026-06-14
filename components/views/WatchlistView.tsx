@@ -38,10 +38,10 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
     };
 
     return (
-        <div className="glass-card rounded-2xl overflow-hidden animate-fade-in relative min-h-[500px] border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <div className="glass-card rounded-2xl overflow-hidden animate-fade-in relative min-h-[500px] border border-gray-200 shadow-md">
             <CartoonBackground icon={Telescope} pattern="dots" color="text-accent-pink" opacity="opacity-[0.03]" />
             {/* Header with z-30 to ensure dropdown appears over table */}
-            <div className="p-4 md:p-6 border-b-2 border-black flex flex-col md:flex-row gap-4 items-start md:items-center justify-between relative z-30">
+            <div className="p-4 md:p-6 border-b-2 border-gray-200 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between relative z-30">
                 <div className="flex items-center gap-4">
                     <ListChecks className="w-5 h-5 text-accent-pink" />
                     <h2 className="text-lg font-bold text-gray-900">Watchlist</h2>
@@ -50,7 +50,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                 <div className="relative w-full md:w-auto flex gap-2">
                     <button 
                         onClick={handleGenerateScript}
-                        className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 border-2 border-black rounded-lg text-sm font-bold transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 border border-gray-200 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-lg"
                         title="Generate Google Apps Script for Email Alerts"
                     >
                         <Code size={16} /> <span className="hidden md:inline">Alert Script</span>
@@ -59,7 +59,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                     {!isAddingWatchlist ? (
                         <button 
                             onClick={() => setIsAddingWatchlist(true)}
-                            className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary-glow text-white border-2 border-black rounded-lg text-sm font-bold transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                            className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary-glow text-white border border-gray-200 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-lg"
                         >
                             <Plus size={16} /> Add Stock
                         </button>
@@ -73,10 +73,10 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                     placeholder="Search Market Data..."
                                     value={watchlistSearch}
                                     onChange={(e) => setWatchlistSearch(e.target.value)}
-                                    className="bg-white border-2 border-black text-gray-900 text-sm rounded-lg py-2 pl-9 pr-4 focus:ring-1 focus:ring-primary outline-none w-full md:w-64 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all"
+                                    className="bg-white border border-gray-200 text-gray-900 text-sm rounded-lg py-2 pl-9 pr-4 focus:ring-1 focus:ring-primary outline-none w-full md:w-64 shadow-sm focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] transition-all"
                                 />
                                 {watchlistSearch && (
-                                    <div className="absolute top-full mt-2 left-0 w-full bg-white border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] max-h-60 overflow-y-auto z-50">
+                                    <div className="absolute top-full mt-2 left-0 w-full bg-white border border-gray-200 rounded-lg shadow-md max-h-60 overflow-y-auto z-50">
                                         {filteredWatchlistSearch.length > 0 ? (
                                             filteredWatchlistSearch.map(ticker => (
                                                 <button
@@ -115,7 +115,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                     </div>
                 ) : (
                     <table className="w-full text-left min-w-[900px] md:min-w-full">
-                        <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-md border-b-2 border-black">
+                        <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-md border-b-2 border-gray-200">
                             <tr>
                                 <th className="px-4 md:px-6 py-4">Name</th>
                                 <th className="px-4 md:px-6 py-4 text-right">Current Price</th>
@@ -131,7 +131,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                 <th className="px-4 md:px-6 py-4 text-center">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y-2 divide-black">
+                        <tbody className="divide-y-2 divide-gray-200">
                             {watchlist.map(item => {
                                 // Fix: Ensure uppercase key lookup for price
                                 const currentPrice = priceData[item.ticker.toUpperCase()] || 0;
@@ -187,7 +187,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                 return (
                                     <tr key={item.id} className="hover:bg-gray-50 transition-colors text-sm group">
                                         <td className="px-4 md:px-6 py-4 font-bold text-gray-900">{item.ticker}</td>
-                                        <td className="px-4 md:px-6 py-4 text-right font-mono text-gray-700">
+                                        <td className="px-4 md:px-6 py-4 text-right text-gray-700 font-sans tracking-tight font-medium">
                                             {currentPrice > 0 ? `${currencySymbol}${currentPrice.toLocaleString()}` : <span className="text-gray-400">N/A</span>}
                                         </td>
                                         <td className="px-4 md:px-6 py-4 text-right relative">
@@ -197,7 +197,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                                 onChange={(e) => !hasSupports && onUpdate(item.id, 'desiredEntryPrice', parseFloat(e.target.value))}
                                                 placeholder="0"
                                                 readOnly={hasSupports}
-                                                className={`w-20 md:w-24 bg-transparent border-b-2 text-right outline-none font-mono ${hasSupports ? 'text-accent-cyan border-transparent cursor-not-allowed opacity-80' : 'text-gray-900 border-black focus:border-primary'}`}
+                                                className={`w-20 md:w-24 bg-transparent border-b-2 text-right outline-none font-sans tracking-tight text-[15px] ${hasSupports ? 'text-accent-cyan border-transparent cursor-not-allowed opacity-80' : 'text-gray-900 border-gray-200 focus:border-primary'}`}
                                                 title={hasSupports ? "Auto-selected from Support Levels" : "Manual Entry"}
                                             />
                                             {hasSupports && (
@@ -210,25 +210,25 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                                 value={item.intrinsicValue || ''}
                                                 onChange={(e) => onUpdate(item.id, 'intrinsicValue', parseFloat(e.target.value))}
                                                 placeholder="0"
-                                                className="w-20 md:w-24 bg-transparent border-b-2 border-black focus:border-primary text-right outline-none text-gray-900 font-mono"
+                                                className="w-20 md:w-24 bg-transparent border-b-2 border-gray-200 focus:border-primary text-right outline-none text-gray-900 font-sans tracking-tight font-medium"
                                             />
                                         </td>
-                                        <td className={`px-4 md:px-6 py-4 text-right font-mono font-bold ${mos > 0 ? 'text-success' : 'text-danger'}`}>
+                                        <td className={`px-4 md:px-6 py-4 text-right font-sans tracking-tight text-[15px] font-bold ${mos > 0 ? 'text-success' : 'text-danger'}`}>
                                             {item.intrinsicValue > 0 ? `${mos.toFixed(2)}%` : '-'}
                                         </td>
-                                        <td className="px-4 md:px-6 py-4 text-right font-mono text-gray-700">
+                                        <td className="px-4 md:px-6 py-4 text-right text-gray-700 font-sans tracking-tight font-medium">
                                             {callRatio.toFixed(2)}
                                         </td>
                                         
                                         {/* Support Levels */}
                                         <td className="px-2 py-4 text-center">
-                                            <input type="number" value={item.s1 || ''} onChange={(e) => onUpdate(item.id, 's1', parseFloat(e.target.value))} placeholder="S1" className="w-12 bg-transparent border-b-2 border-black focus:border-primary text-center outline-none text-gray-600 text-xs font-mono" />
+                                            <input type="number" value={item.s1 || ''} onChange={(e) => onUpdate(item.id, 's1', parseFloat(e.target.value))} placeholder="S1" className="w-12 bg-transparent border-b-2 border-gray-200 focus:border-primary text-center outline-none text-gray-600 text-[13px] font-sans tracking-tight font-medium" />
                                         </td>
                                         <td className="px-2 py-4 text-center">
-                                            <input type="number" value={item.s2 || ''} onChange={(e) => onUpdate(item.id, 's2', parseFloat(e.target.value))} placeholder="S2" className="w-12 bg-transparent border-b-2 border-black focus:border-primary text-center outline-none text-gray-600 text-xs font-mono" />
+                                            <input type="number" value={item.s2 || ''} onChange={(e) => onUpdate(item.id, 's2', parseFloat(e.target.value))} placeholder="S2" className="w-12 bg-transparent border-b-2 border-gray-200 focus:border-primary text-center outline-none text-gray-600 text-[13px] font-sans tracking-tight font-medium" />
                                         </td>
                                         <td className="px-2 py-4 text-center">
-                                            <input type="number" value={item.s3 || ''} onChange={(e) => onUpdate(item.id, 's3', parseFloat(e.target.value))} placeholder="S3" className="w-12 bg-transparent border-b-2 border-black focus:border-primary text-center outline-none text-gray-600 text-xs font-mono" />
+                                            <input type="number" value={item.s3 || ''} onChange={(e) => onUpdate(item.id, 's3', parseFloat(e.target.value))} placeholder="S3" className="w-12 bg-transparent border-b-2 border-gray-200 focus:border-primary text-center outline-none text-gray-600 text-[13px] font-sans tracking-tight font-medium" />
                                         </td>
 
                                         <td className="px-4 md:px-6 py-4 text-center">
@@ -243,7 +243,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                                                     value={item.researchLink || ''}
                                                     onChange={(e) => onUpdate(item.id, 'researchLink', e.target.value)}
                                                     placeholder="Link"
-                                                    className="w-16 md:w-24 bg-transparent border-b-2 border-black focus:border-primary text-xs outline-none text-gray-600"
+                                                    className="w-16 md:w-24 bg-transparent border-b-2 border-gray-200 focus:border-primary text-xs outline-none text-gray-600"
                                                 />
                                                 {item.researchLink && (
                                                     <a href={item.researchLink} target="_blank" rel="noopener noreferrer" className="text-accent-cyan hover:text-primary">
@@ -270,8 +270,8 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
             {/* Script Modal */}
             {showScriptModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm p-4 animate-fade-in">
-                    <div className="glass-card border-2 border-black rounded-2xl w-full max-w-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col max-h-[85vh] bg-white">
-                        <div className="p-6 border-b-2 border-black flex justify-between items-center bg-gray-50">
+                    <div className="glass-card border border-gray-200 rounded-2xl w-full max-w-3xl shadow-xl relative overflow-hidden flex flex-col max-h-[85vh] bg-white">
+                        <div className="p-6 border-b-2 border-gray-200 flex justify-between items-center bg-gray-50">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                                     <Code size={20} className="text-primary" /> Email Alert Script
@@ -285,18 +285,18 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({ watchlist, priceDa
                             <textarea 
                                 readOnly
                                 value={generatedScript}
-                                className="w-full h-full bg-gray-900 text-gray-300 font-mono text-xs p-6 outline-none resize-none custom-scrollbar"
+                                className="w-full h-full bg-gray-900 text-gray-300 text-[13px] p-6 outline-none resize-none custom-scrollbar font-sans tracking-tight font-medium"
                             />
                             <button 
                                 onClick={copyToClipboard}
-                                className="absolute top-4 right-4 px-4 py-2 bg-primary hover:bg-primary-glow text-white rounded-lg text-xs font-bold shadow-lg flex items-center gap-2 transition-all border-2 border-black"
+                                className="absolute top-4 right-4 px-4 py-2 bg-primary hover:bg-primary-glow text-white rounded-lg text-xs font-bold shadow-lg flex items-center gap-2 transition-all border border-gray-200"
                             >
                                 {copied ? <Check size={14} /> : <Copy size={14} />}
                                 {copied ? 'Copied!' : 'Copy Code'}
                             </button>
                         </div>
 
-                        <div className="p-4 border-t-2 border-black bg-gray-50 text-xs text-gray-600">
+                        <div className="p-4 border-t-2 border-gray-200 bg-gray-50 text-xs text-gray-600">
                             <strong>Instructions:</strong>
                             <ol className="list-decimal list-inside mt-1 space-y-1">
                                 <li>Open your Google Sheet linked to this app.</li>

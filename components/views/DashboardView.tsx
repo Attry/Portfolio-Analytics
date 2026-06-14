@@ -34,7 +34,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
     // 1. Net ROI (Return on Investment) -> Denominator: Total Invested
     const netROI = metrics.totalInvested > 0 ? (netTotalReturns / metrics.totalInvested) * 100 : 0;
 
-    // 2. Net Return (Portfolio Return) -> Denominator: Total Invested + Cash
+    // 2. Net Return (Portfolio Return) -> Denominator: Total Capital
     const totalCapital = metrics.totalInvested + metrics.cashBalance;
     const netReturnPct = totalCapital > 0 ? (netTotalReturns / totalCapital) * 100 : 0;
     
@@ -99,7 +99,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
             <div className="space-y-6 animate-fade-in relative">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
-                        <div className="glass-card rounded-2xl p-8 flex items-center justify-between border-2 border-black relative overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="glass-card rounded-2xl p-8 flex items-center justify-between border border-gray-200 relative overflow-hidden shadow-md">
                              <div className="absolute inset-0 bg-gradient-to-r from-success/10 to-transparent pointer-events-none"></div>
                              <div>
                                  <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">Total Cash Value</p>
@@ -114,7 +114,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                     <div className="flex flex-col justify-center">
                         <button 
                             onClick={() => setIsSalaryModalOpen(true)}
-                            className="w-full py-6 bg-primary hover:bg-primary-glow text-white rounded-2xl font-bold text-lg transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] flex items-center justify-center gap-3 border-2 border-black"
+                            className="w-full py-6 bg-primary hover:bg-primary-glow text-white rounded-2xl font-bold text-lg transition-all shadow-md border border-gray-200 hover:shadow-lg flex items-center justify-center gap-3"
                         >
                             <Plus className="w-6 h-6" /> Add Salary
                         </button>
@@ -124,7 +124,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                 {/* Salary Modal */}
                 {isSalaryModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm animate-fade-in p-4">
-                        <div className="bg-white border-2 border-black rounded-2xl p-6 w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
+                        <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl relative">
                             <button 
                                 onClick={() => setIsSalaryModalOpen(false)}
                                 className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
@@ -144,7 +144,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                                         value={salaryAccount}
                                         onChange={(e) => setSalaryAccount(e.target.value)}
                                         placeholder="e.g. HDFC Salary, Savings..."
-                                        className="w-full bg-white border-2 border-black rounded-xl p-3 text-gray-900 focus:outline-none focus:border-primary transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-3 text-gray-900 focus:outline-none focus:border-primary transition-colors shadow-sm focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
                                     />
                                     <datalist id="accounts">
                                         {accounts.map((acc: any) => <option key={acc} value={acc} />)}
@@ -157,12 +157,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                                         value={salaryAmount}
                                         onChange={(e) => setSalaryAmount(e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full bg-white border-2 border-black rounded-xl p-3 text-gray-900 focus:outline-none focus:border-primary transition-colors font-mono text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-3 text-gray-900 focus:outline-none focus:border-primary transition-colors text-[19px] shadow-sm focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] font-sans tracking-tight font-medium"
                                     />
                                 </div>
                                 <button 
                                     onClick={handleAddSalary}
-                                    className="w-full py-3 bg-success text-white border-2 border-black rounded-xl font-bold mt-2 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                                    className="w-full py-3 bg-success text-white border border-gray-200 rounded-xl font-bold mt-2 transition-all shadow-md hover:shadow-lg"
                                 >
                                     Confirm Add
                                 </button>
@@ -228,7 +228,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Allocation Chart */}
-                <div className="glass-card rounded-2xl p-6 lg:col-span-1 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <div className="glass-card rounded-2xl p-6 lg:col-span-1 border border-gray-200 shadow-md">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <PieChartIcon className="w-5 h-5 text-accent-cyan" /> Allocation
                     </h3>
@@ -264,36 +264,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
 
                 {/* Summary Stats - Only show for Equities */}
                 {context !== 'MUTUAL_FUNDS' && (
-                    <div className="glass-card rounded-2xl p-6 lg:col-span-2 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <div className="glass-card rounded-2xl p-6 lg:col-span-2 border border-gray-200 shadow-md">
                             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                             <BarChart3 className="w-5 h-5 text-primary" /> Performance Summary
                         </h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
                                 <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Realized P&L</p>
                                 <p className={`text-xl font-bold mt-1 ${metrics.grossRealizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
                                     {currencySymbol}{metrics.grossRealizedPnL.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
                                 <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Dividends</p>
                                 <p className="text-xl font-bold mt-1 text-accent-cyan">
                                     {currencySymbol}{metrics.totalDividends.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
                                 <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Charges & Taxes</p>
                                 <p className="text-xl font-bold mt-1 text-danger">
                                     {currencySymbol}{metrics.charges.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
                                 <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Cash Balance</p>
                                 <p className="text-xl font-bold mt-1 text-accent-cyan">
                                     {currencySymbol}{metrics.cashBalance.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
                                 <p className="text-xs text-gray-600 uppercase tracking-wider font-bold">Net Realized P&L</p>
                                 <p className={`text-xl font-bold mt-1 ${metrics.netRealizedPnL >= 0 ? 'text-success' : 'text-danger'}`}>
                                     {currencySymbol}{metrics.netRealizedPnL.toLocaleString()}

@@ -258,9 +258,9 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                     <p className="text-gray-600 text-sm">Active workspace for Trim, Accumulate, and Monitoring decisions.</p>
                 </div>
                 
-                <div className="glass-card px-6 py-3 border-2 border-black bg-success/10 rounded-xl flex flex-col items-end shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <div className="glass-card px-6 py-3 border border-gray-200 bg-success/10 rounded-xl flex flex-col items-end shadow-md">
                     <span className="text-xs font-bold text-success uppercase tracking-wider mb-1">Deployable Cash</span>
-                    <span className="text-3xl font-bold text-gray-900 font-mono">{currencySymbol}{deployableCash.toLocaleString()}</span>
+                    <span className="text-4xl font-bold text-gray-900 font-sans tracking-tight">{currencySymbol}{deployableCash.toLocaleString()}</span>
                     {externalCash > 0 && (
                         <span className="text-[10px] text-gray-600 mt-1 flex items-center gap-1">
                             (Incl. {currencySymbol}{externalCash.toLocaleString()} Savings)
@@ -270,9 +270,9 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
             </div>
 
             {/* --- ARENA TABLE --- */}
-            <div className="glass-card rounded-2xl overflow-hidden border-2 border-black flex-1 flex flex-col relative min-h-[500px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-10">
+            <div className="glass-card rounded-2xl overflow-hidden border border-gray-200 flex-1 flex flex-col relative min-h-[500px] shadow-md z-10">
                 {/* Table Header */}
-                <div className="p-4 border-b-2 border-black flex justify-between items-center bg-gray-50">
+                <div className="p-4 border-b-2 border-gray-200 flex justify-between items-center bg-gray-50">
                     <div className="flex gap-2">
                         <span className="text-xs font-bold text-gray-600 uppercase">Arena Items: {arenaTickers.length}</span>
                     </div>
@@ -280,14 +280,14 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                         {!isAdding ? (
                             <button 
                                 onClick={() => setIsAdding(true)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary-glow text-white border-2 border-black rounded-lg text-xs font-bold transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                                className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary-glow text-white border border-gray-200 rounded-lg text-xs font-bold transition-all shadow-sm hover:shadow-lg"
                             >
                                 <Plus size={14} /> Add Stock
                             </button>
                         ) : (
                             <div className="absolute right-0 top-[-10px] w-64 z-50">
-                                <div className="bg-white border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-                                    <div className="flex items-center p-2 border-b-2 border-black">
+                                <div className="bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden">
+                                    <div className="flex items-center p-2 border-b-2 border-gray-200">
                                         <input 
                                             autoFocus
                                             type="text" 
@@ -317,7 +317,7 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
 
                 <div className="overflow-auto flex-1 custom-scrollbar">
                     <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-md border-b-2 border-black">
+                        <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold tracking-wider sticky top-0 z-10 shadow-md border-b-2 border-gray-200">
                             <tr>
                                 <th className="px-6 py-4">Stock Name</th>
                                 <th className="px-6 py-4 text-center">Days Since Buy</th>
@@ -327,7 +327,7 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                                 <th className="px-6 py-4 text-center w-10"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y-2 divide-black">
+                        <tbody className="divide-y-2 divide-gray-200">
                             {arenaTickers.map(ticker => {
                                 const data = getStockData(ticker);
                                 return (
@@ -340,10 +340,10 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                                             <span className="font-bold text-gray-900 text-base group-hover:text-primary transition-colors">{ticker}</span>
                                             {data.price === 0 && <span className="text-[10px] text-red-500 ml-2">(No Price)</span>}
                                         </td>
-                                        <td className="px-6 py-4 text-center text-gray-600 font-mono">
+                                        <td className="px-6 py-4 text-center text-gray-600 font-sans tracking-tight font-medium">
                                             {data.daysHeld}
                                         </td>
-                                        <td className={`px-6 py-4 text-right font-mono font-bold ${data.mos > 0 ? 'text-success' : 'text-danger'}`}>
+                                        <td className={`px-6 py-4 text-right font-sans tracking-tight text-[15px] font-bold ${data.mos > 0 ? 'text-success' : 'text-danger'}`}>
                                             {data.watchItem?.intrinsicValue ? `${data.mos.toFixed(1)}%` : <span className="text-gray-400">-</span>}
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -351,7 +351,7 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                                                 {data.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-gray-900">
+                                        <td className="px-6 py-4 text-right text-gray-900 font-sans tracking-tight font-medium">
                                             {data.weight.toFixed(2)}%
                                         </td>
                                         <td className="px-6 py-4 text-center" onClick={(e) => { e.stopPropagation(); handleRemove(ticker); }}>
@@ -375,13 +375,13 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
             {/* --- THE WAR ROOM (MODAL) --- */}
             {selectedTicker && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm animate-fade-in p-4">
-                    <div className="glass-card border-2 border-black rounded-2xl w-full max-w-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col max-h-[90vh] bg-white">
+                    <div className="glass-card border border-gray-200 rounded-2xl w-full max-w-2xl shadow-xl relative overflow-hidden flex flex-col max-h-[90vh] bg-white">
                         {/* Modal Header */}
-                        <div className="p-6 border-b-2 border-black flex justify-between items-start bg-gray-50">
+                        <div className="p-6 border-b-2 border-gray-200 flex justify-between items-start bg-gray-50">
                             <div>
                                 <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                                     {selectedTicker}
-                                    <span className="text-sm font-normal text-gray-600 px-2 py-0.5 rounded border-2 border-black bg-white">
+                                    <span className="text-sm font-normal text-gray-600 px-2 py-0.5 rounded border border-gray-200 bg-white">
                                         {currencySymbol}{priceData[selectedTicker.toUpperCase()]?.toLocaleString() || 'N/A'}
                                     </span>
                                 </h3>
@@ -394,18 +394,18 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                             
                             {/* Hidden Data Display */}
                             <div className="grid grid-cols-3 gap-4">
-                                <div className="p-4 bg-gray-100 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <div className="p-4 bg-gray-100 rounded-xl border border-gray-200 shadow-sm">
                                     <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Avg Buy Price</p>
-                                    <p className="text-lg font-mono text-gray-900">
+                                    <p className="text-[19px] text-gray-900 font-sans tracking-tight font-medium">
                                         {metrics.holdings.find((h:any) => h.ticker === selectedTicker) 
                                             ? `${currencySymbol}${(metrics.holdings.find((h:any) => h.ticker === selectedTicker).invested / metrics.holdings.find((h:any) => h.ticker === selectedTicker).qty).toFixed(2)}` 
                                             : '-'}
                                     </p>
                                 </div>
-                                <div className="p-4 bg-gray-100 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <div className="p-4 bg-gray-100 rounded-xl border border-gray-200 shadow-sm">
                                     <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Last Buy Price</p>
                                     <div className="flex flex-col">
-                                        <p className="text-lg font-mono text-gray-900">
+                                        <p className="text-[19px] text-gray-900 font-sans tracking-tight font-medium">
                                             {getStockData(selectedTicker).latestBuyPrice ? `${currencySymbol}${getStockData(selectedTicker).latestBuyPrice.toFixed(2)}` : '-'}
                                         </p>
                                         <p className="text-[10px] text-gray-500">
@@ -413,9 +413,9 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="p-4 bg-gray-100 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <div className="p-4 bg-gray-100 rounded-xl border border-gray-200 shadow-sm">
                                     <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Portfolio Weight</p>
-                                    <p className="text-lg font-mono text-gray-900">
+                                    <p className="text-[19px] text-gray-900 font-sans tracking-tight font-medium">
                                         {getStockData(selectedTicker).weight.toFixed(2)}%
                                     </p>
                                 </div>
@@ -423,7 +423,7 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
 
                             {/* Strategy Inputs */}
                             <div className="space-y-4">
-                                <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2 border-b-2 border-black pb-2">
+                                <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2 border-b-2 border-gray-200 pb-2">
                                     <Target size={16} className="text-accent-cyan" /> Strategic Levels
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -435,7 +435,7 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                                                 type="number" 
                                                 value={editForm.intrinsic}
                                                 onChange={(e) => setEditForm({...editForm, intrinsic: parseFloat(e.target.value)})}
-                                                className="w-full bg-white border-2 border-black focus:border-accent-cyan rounded-xl py-2.5 pl-8 pr-4 text-gray-900 font-mono outline-none transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
+                                                className="w-full bg-white border border-gray-200 focus:border-accent-cyan rounded-xl py-2.5 pl-8 pr-4 text-gray-900 outline-none transition-colors shadow-sm focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] font-sans tracking-tight font-medium text-[15px]"
                                             />
                                         </div>
                                         <p className="text-[10px] text-gray-600 mt-1">
@@ -451,7 +451,7 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                                                 value={modalEffectiveTarget}
                                                 readOnly={modalHasSupports}
                                                 onChange={(e) => !modalHasSupports && setEditForm({...editForm, desiredEntry: parseFloat(e.target.value)})}
-                                                className={`w-full bg-white border-2 border-black rounded-xl py-2.5 pl-8 pr-4 font-mono outline-none transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] ${modalHasSupports ? 'text-accent-cyan cursor-not-allowed opacity-80' : 'text-gray-900 focus:border-accent-cyan'}`}
+                                                className={`w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-8 pr-4 font-sans tracking-tight text-[15px] outline-none transition-colors shadow-sm border border-gray-200 focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] ${modalHasSupports ? 'text-accent-cyan cursor-not-allowed opacity-80' : 'text-gray-900 focus:border-accent-cyan'}`}
                                             />
                                             {modalHasSupports && <Lock size={12} className="absolute right-3 top-3.5 text-gray-500" />}
                                         </div>
@@ -466,15 +466,15 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                                 <div className="grid grid-cols-3 gap-4">
                                      <div>
                                         <label className="block text-xs font-bold text-gray-600 mb-2 uppercase">S1 (Support 1)</label>
-                                        <input type="number" value={editForm.s1 || ''} onChange={(e) => setEditForm({...editForm, s1: parseFloat(e.target.value)})} placeholder="0" className="w-full bg-white border-2 border-black focus:border-primary rounded-xl p-2.5 text-gray-900 font-mono outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]" />
+                                        <input type="number" value={editForm.s1 || ''} onChange={(e) => setEditForm({...editForm, s1: parseFloat(e.target.value)})} placeholder="0" className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl p-2.5 text-gray-900 outline-none shadow-sm focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] font-sans tracking-tight font-medium text-[15px]" />
                                      </div>
                                      <div>
                                         <label className="block text-xs font-bold text-gray-600 mb-2 uppercase">S2 (Support 2)</label>
-                                        <input type="number" value={editForm.s2 || ''} onChange={(e) => setEditForm({...editForm, s2: parseFloat(e.target.value)})} placeholder="0" className="w-full bg-white border-2 border-black focus:border-primary rounded-xl p-2.5 text-gray-900 font-mono outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]" />
+                                        <input type="number" value={editForm.s2 || ''} onChange={(e) => setEditForm({...editForm, s2: parseFloat(e.target.value)})} placeholder="0" className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl p-2.5 text-gray-900 outline-none shadow-sm focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] font-sans tracking-tight font-medium text-[15px]" />
                                      </div>
                                      <div>
                                         <label className="block text-xs font-bold text-gray-600 mb-2 uppercase">S3 (Support 3)</label>
-                                        <input type="number" value={editForm.s3 || ''} onChange={(e) => setEditForm({...editForm, s3: parseFloat(e.target.value)})} placeholder="0" className="w-full bg-white border-2 border-black focus:border-primary rounded-xl p-2.5 text-gray-900 font-mono outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]" />
+                                        <input type="number" value={editForm.s3 || ''} onChange={(e) => setEditForm({...editForm, s3: parseFloat(e.target.value)})} placeholder="0" className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl p-2.5 text-gray-900 outline-none shadow-sm focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px] font-sans tracking-tight font-medium text-[15px]" />
                                      </div>
                                 </div>
 
@@ -486,14 +486,14 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                                             value={editForm.link}
                                             onChange={(e) => setEditForm({...editForm, link: e.target.value})}
                                             placeholder="https://docs.google.com/..."
-                                            className="flex-1 bg-white border-2 border-black focus:border-accent-cyan rounded-xl py-2.5 px-4 text-sm text-gray-900 outline-none transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
+                                            className="flex-1 bg-white border border-gray-200 focus:border-accent-cyan rounded-xl py-2.5 px-4 text-sm text-gray-900 outline-none transition-colors shadow-sm focus:shadow-none focus:translate-x-[2px] focus:translate-y-[2px]"
                                         />
                                         {editForm.link && (
                                             <a 
                                                 href={editForm.link} 
                                                 target="_blank" 
                                                 rel="noreferrer"
-                                                className="p-2.5 bg-white hover:bg-gray-100 border-2 border-black rounded-xl text-accent-cyan transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                                                className="p-2.5 bg-white hover:bg-gray-100 border border-gray-200 rounded-xl text-accent-cyan transition-colors shadow-sm hover:shadow-lg transition-all"
                                             >
                                                 <ExternalLink size={20} />
                                             </a>
@@ -505,7 +505,7 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-6 border-t-2 border-black bg-gray-50 flex justify-end gap-3">
+                        <div className="p-6 border-t-2 border-gray-200 bg-gray-50 flex justify-end gap-3">
                             <button 
                                 onClick={() => setSelectedTicker(null)}
                                 className="px-6 py-2 rounded-xl text-sm font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-200 transition-colors"
@@ -514,7 +514,7 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
                             </button>
                             <button 
                                 onClick={handleSaveModal}
-                                className="px-6 py-2 bg-primary hover:bg-primary-glow text-white rounded-xl text-sm font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] flex items-center gap-2 transition-all border-2 border-black"
+                                className="px-6 py-2 bg-primary hover:bg-primary-glow text-white rounded-xl text-sm font-bold shadow-md border border-gray-200 hover:shadow-lg transition-all flex items-center gap-2"
                             >
                                 <Save size={16} /> Save Strategy
                             </button>

@@ -16,16 +16,30 @@ export const useConsolidatedData = () => {
     };
 
     // Indian Equity Data
-    const indianTrades: Trade[] = getLocal('dhan_trades') || [];
+    const rawIndianTrades: Trade[] = [...(getLocal('dhan_base_trades') || []), ...(getLocal('dhan_trades') || [])];
+    const indianTrades = Array.from(new Map(rawIndianTrades.map(t => [t.id, t])).values());
     const indianPrices: Record<string, number> = getLocal('dhan_prices') || {};
-    const indianSummary = getLocal('dhan_summary') || {};
+    const indianSummaryObj = getLocal('dhan_summary') || {};
+    const indianBaseSummaryObj = getLocal('dhan_base_summary') || {};
+    const indianSummary = {
+        cash: indianSummaryObj.cash !== undefined ? indianSummaryObj.cash : 0,
+        charges: (indianSummaryObj.charges || 0) + (indianBaseSummaryObj.charges || 0),
+        dividends: (indianSummaryObj.dividends || 0) + (indianBaseSummaryObj.dividends || 0),
+    };
     const indianLedger: LedgerRecord[] = getLocal('dhan_ledger') || [];
     const indianDividends: DividendRecord[] = getLocal('dhan_dividends') || [];
     
     // International Equity Data
-    const intlTrades: Trade[] = getLocal('intl_trades') || [];
+    const rawIntlTrades: Trade[] = [...(getLocal('intl_base_trades') || []), ...(getLocal('intl_trades') || [])];
+    const intlTrades = Array.from(new Map(rawIntlTrades.map(t => [t.id, t])).values());
     const intlPrices: Record<string, number> = getLocal('intl_prices') || {};
-    const intlSummary = getLocal('intl_summary') || {};
+    const intlSummaryObj = getLocal('intl_summary') || {};
+    const intlBaseSummaryObj = getLocal('intl_base_summary') || {};
+    const intlSummary = {
+        cash: intlSummaryObj.cash !== undefined ? intlSummaryObj.cash : 0,
+        charges: (intlSummaryObj.charges || 0) + (intlBaseSummaryObj.charges || 0),
+        dividends: (intlSummaryObj.dividends || 0) + (intlBaseSummaryObj.dividends || 0),
+    };
     const intlDividends: DividendRecord[] = getLocal('intl_dividends') || [];
     
     // Mutual Funds
@@ -64,8 +78,8 @@ export const useConsolidatedData = () => {
         const indFifo = calculateFIFO(indianTrades);
         
         // Cash: Prefer summary, fallback to ledger
-        let indCash = indianSummary.cash || 0;
-        if (indCash === 0 && indianLedger.length > 0) {
+        let indCash = indianSummary.cash !== undefined ? indianSummary.cash : 0;
+        if (indianSummary.cash === undefined && indianLedger.length > 0) {
             const sorted = [...indianLedger].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
             indCash = sorted[0].balance;
         }
@@ -73,12 +87,18 @@ export const useConsolidatedData = () => {
         // Calculate Market Value & Unrealized P&L using Price Data
         let indCurrentVal = 0;
         let indUnrealized = 0;
+        let indGoldEtfVal = 0;
         
         Object.entries(indFifo.holdings).forEach(([ticker, data]) => {
             if (data.qty > 0) {
                 const price = indianPrices[ticker.toUpperCase()] || (data.invested / data.qty); // Fallback to cost if no price
                 const marketVal = data.qty * price;
-                indCurrentVal += marketVal;
+                
+                if (ticker.toUpperCase() === 'NIPPON GOLD ETF (GOLDBEES)' || ticker.toUpperCase() === 'GOLDBEES' || ticker.toUpperCase().includes('GOLDBEES')) {
+                    indGoldEtfVal += marketVal;
+                } else {
+                    indCurrentVal += marketVal;
+                }
                 indUnrealized += (marketVal - data.invested);
             }
         });
@@ -98,7 +118,11 @@ export const useConsolidatedData = () => {
         // --- 2. INTERNATIONAL EQUITY (EUR) ---
         const intlFifo = calculateFIFO(intlTrades);
         
-        const intlCashEUR = intlSummary.cash || 0;
+        let intlCashEUR = intlSummary.cash !== undefined ? intlSummary.cash : 0;
+        if (intlSummary.cash === undefined && intlDividends.length > 0) {
+            // we don't have general ledger for intl so we just keep 0
+            intlCashEUR = 0;
+        }
         
         let intlCurrentValEUR = 0;
         let intlUnrealizedEUR = 0;
@@ -170,7 +194,7 @@ export const useConsolidatedData = () => {
 
         // Net Asset Value (NAV) = Sum of all current Assets + cash
         // Assets = (Ind Stock Val) + (Ind Cash) + (Intl Stock Val) + (Intl Cash) + (MF Val) + (Gold Val) + (Cash Eq)
-        const netAssetValue = indCurrentVal + indCash + intlCurrentValINR + intlCashINR + mfCurrentVal + goldCurrentVal + cashEqVal;
+        const netAssetValue = indCurrentVal + indGoldEtfVal + indCash + intlCurrentValINR + intlCashINR + mfCurrentVal + goldCurrentVal + cashEqVal;
         
         // Net Cash (for display)
         const netCash = indCash + intlCashINR + cashEqVal;
@@ -186,7 +210,7 @@ export const useConsolidatedData = () => {
         const allocIntlEquity = intlCurrentValINR;
 
         // Gold
-        const allocGold = goldCurrentVal;
+        const allocGold = goldCurrentVal + indGoldEtfVal;
 
         // Cash (Net Cash)
         const allocCash = netCash;

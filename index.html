@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FinFolio - Portfolio Analytics</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
-              sans: ['"Fredoka"', 'sans-serif'],
+              sans: ['"Inter"', 'sans-serif'],
             },
             colors: {
               // Dynamic colors linked to CSS variables
@@ -72,78 +72,78 @@
     </script>
     <style>
       :root {
-        /* Default Theme (Indian Equity) - Cartoon Orange */
-        --bg-color: #FFFBEB; /* Amber 50 */
+        /* Default Theme (Indian Equity) - Elegant Orange/Slate */
+        --bg-color: #FAFAFA; /* Zinc 50 */
         --surface-color: #FFFFFF;
-        --border-color: #000000;
+        --border-color: #E5E7EB; /* Gray 200 */
         --primary-color: #F97316; /* Orange 500 */
-        --primary-glow: #FDBA74;
-        --primary-dim: #C2410C;
+        --primary-glow: #FFEDD5; /* Orange 100 */
+        --primary-dim: #EA580C; /* Orange 600 */
         --accent-cyan: #0EA5E9;
         --accent-pink: #EC4899;
         --accent-green: #10B981;
       }
 
-      /* Corporate Theme (Mutual Funds) - Cartoon Blue */
+      /* Corporate Theme (Mutual Funds) - Elegant Blue */
       .theme-corporate {
-        --bg-color: #EFF6FF; /* Blue 50 */
+        --bg-color: #F8FAFC; /* Slate 50 */
         --surface-color: #FFFFFF;
-        --border-color: #000000;
+        --border-color: #E2E8F0; /* Slate 200 */
         --primary-color: #3B82F6; /* Blue 500 */
-        --primary-glow: #93C5FD;
-        --primary-dim: #1E40AF;
+        --primary-glow: #DBEAFE; /* Blue 100 */
+        --primary-dim: #2563EB; /* Blue 600 */
         --accent-cyan: #38BDF8;
         --accent-pink: #818CF8;
         --accent-green: #34D399;
       }
 
-      /* Gold Theme (Gold ETF) - Cartoon Yellow */
+      /* Gold Theme (Gold ETF) - Elegant Gold/Yellow */
       .theme-gold {
-        --bg-color: #FEFCE8; /* Yellow 50 */
+        --bg-color: #FFFAEB; /* Elegant warm white */
         --surface-color: #FFFFFF;
-        --border-color: #000000;
+        --border-color: #FDE047; /* Yellow 300 */
         --primary-color: #EAB308; /* Yellow 500 */
-        --primary-glow: #FDE047;
-        --primary-dim: #854D0E;
+        --primary-glow: #FEF08A; /* Yellow 200 */
+        --primary-dim: #CA8A04; /* Yellow 600 */
         --accent-cyan: #FCD34D;
         --accent-pink: #F59E0B;
         --accent-green: #84CC16;
       }
 
-      /* Sleek Theme (International) - Cartoon Cyan */
+      /* Sleek Theme (International) - Elegant Cyan */
       .theme-intl {
-        --bg-color: #ECFEFF; /* Cyan 50 */
+        --bg-color: #F0FDFA; /* Teal 50 */
         --surface-color: #FFFFFF;
-        --border-color: #000000;
+        --border-color: #CCFBF1; /* Teal 100 */
         --primary-color: #06B6D4; /* Cyan 500 */
-        --primary-glow: #67E8F9;
-        --primary-dim: #155E75;
+        --primary-glow: #CFFAFE; /* Cyan 100 */
+        --primary-dim: #0891B2; /* Cyan 600 */
         --accent-cyan: #22D3EE;
         --accent-pink: #A855F7;
         --accent-green: #2DD4BF;
       }
 
-      /* Cash Theme (Cash Equivalents) - Cartoon Green */
+      /* Cash Theme (Cash Equivalents) - Elegant Green */
       .theme-cash {
         --bg-color: #F0FDF4; /* Green 50 */
         --surface-color: #FFFFFF;
-        --border-color: #000000;
+        --border-color: #DCFCE7; /* Green 100 */
         --primary-color: #10B981; /* Emerald 500 */
-        --primary-glow: #6EE7B7;
-        --primary-dim: #065F46;
+        --primary-glow: #D1FAE5; /* Emerald 100 */
+        --primary-dim: #059669; /* Emerald 600 */
         --accent-cyan: #34D399;
         --accent-pink: #059669;
         --accent-green: #10B981;
       }
       
-      /* Net Worth Theme (Consolidated) - Cartoon Purple */
+      /* Net Worth Theme (Consolidated) - Elegant Purple */
       .theme-networth {
         --bg-color: #FAF5FF; /* Purple 50 */
         --surface-color: #FFFFFF;
-        --border-color: #000000;
+        --border-color: #F3E8FF; /* Purple 100 */
         --primary-color: #8B5CF6; /* Violet 500 */
-        --primary-glow: #C4B5FD;
-        --primary-dim: #5B21B6;
+        --primary-glow: #EDE9FE; /* Violet 100 */
+        --primary-dim: #7C3AED; /* Violet 600 */
         --accent-cyan: #F472B6;
         --accent-pink: #A78BFA;
         --accent-green: #34D399;
@@ -153,67 +153,65 @@
         height: 100%;
         min-height: 100vh;
         background-color: var(--bg-color);
-        color: #111827; /* Dark text for contrast on light bg */
+        color: #111827; 
         transition: background-color 0.5s ease;
       }
       
-      /* Cartoon / Neubrutalist Styles */
+      /* Elegant Backgrounds */
       .bg-pattern-dots {
         background-image: radial-gradient(var(--border-color) 1px, transparent 1px);
         background-size: 20px 20px;
-        opacity: 0.05;
+        opacity: 0.4;
       }
       
       .bg-pattern-grid {
         background-image: linear-gradient(var(--border-color) 1px, transparent 1px),
                           linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
         background-size: 40px 40px;
-        opacity: 0.05;
+        opacity: 0.4;
       }
 
+      /* Elegant Panels & Cards */
       .glass-panel {
         background: var(--surface-color);
-        border: 3px solid var(--border-color);
-        box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
         border-radius: 16px;
       }
       
       .glass-card {
         background: var(--surface-color);
-        border: 3px solid var(--border-color);
-        box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
         border-radius: 12px;
-        transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        transition: all 0.2s ease-in-out;
       }
       
       .glass-card:hover {
-        transform: translate(-2px, -2px);
-        box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
-        border-color: var(--border-color);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
       }
 
-      /* Custom Scrollbar - Chunky */
+      /* Refined Scrollbar */
       ::-webkit-scrollbar {
-        width: 12px;
-        height: 12px;
+        width: 8px;
+        height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: var(--bg-color);
-        border-left: 2px solid var(--border-color);
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: var(--primary-color);
-        border: 2px solid var(--border-color);
-        border-radius: 6px;
+        background: #CBD5E1; /* Slate 300 */
+        border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-dim); 
+        background: #94A3B8; /* Slate 400 */
       }
       
       /* Selection Color */
       ::selection {
-        background: var(--primary-color);
-        color: white;
+        background: var(--primary-glow);
+        color: var(--primary-dim);
       }
     </style>
   <script type="importmap">
