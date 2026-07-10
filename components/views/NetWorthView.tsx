@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { useConsolidatedData } from '../../hooks/useConsolidatedData';
+import { useSnapshotData } from '../../hooks/useSnapshotData';
+import { PerformanceChart } from '../PerformanceChart';
 import { Wallet, TrendingUp, Landmark, PieChart as PieChartIcon, ArrowUpRight, ArrowDownRight, RefreshCw, Gem } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CartoonBackground } from '../CartoonBackground';
@@ -13,8 +15,17 @@ export const NetWorthView: React.FC = () => {
         netReturnPct, 
         allocations, 
         isLoading, 
-        conversionRate 
+        conversionRate,
+        totalCapitalBase,
+        xirr
     } = useConsolidatedData();
+
+    const {
+        snapshots,
+        takeSnapshotNow,
+        seedDemoSnapshots,
+        clearSnapshots
+    } = useSnapshotData('CONSOLIDATED', netAssetValue, totalCapitalBase || 0, xirr || 0);
 
     if (isLoading) {
         return (
@@ -102,6 +113,17 @@ export const NetWorthView: React.FC = () => {
                      </div>
                  </div>
              </div>
+
+             {/* Performance Chart Section */}
+             <PerformanceChart
+                 snapshots={snapshots}
+                 onTakeSnapshot={takeSnapshotNow}
+                 onSeedDemo={seedDemoSnapshots}
+                 onClearSnapshots={clearSnapshots}
+                 netAssetValue={netAssetValue}
+                 currencySymbol="₹"
+                 contextName="Consolidated"
+             />
 
              {/* Allocation Section */}
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

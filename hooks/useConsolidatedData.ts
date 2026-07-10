@@ -1,10 +1,15 @@
 
 import { useState, useEffect, useMemo } from 'react';
-import { Trade, TradeType, CashHolding, LedgerRecord, DividendRecord, PnLRecord } from '../types';
-import { calculateFIFO } from '../utils/financials';
+import { Trade, TradeType, CashHolding, LedgerRecord, DividendRecord, PnLRecord, PortfolioSnapshot } from '../types';
+import { calculateFIFO, calculateXIRR } from '../utils/financials';
 
 export const useConsolidatedData = () => {
-    const [conversionRate, setConversionRate] = useState<number>(90); // Default fallback
+    const [conversionRate, setConversionRate] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem('eur_to_inr_rate');
+            return saved ? parseFloat(saved) : 90;
+        } catch { return 90; }
+    }); // Initial value from storage or fallback
     const [isLoading, setIsLoading] = useState(true);
 
     // --- READ DATA FROM LOCAL STORAGE ---
@@ -62,6 +67,9 @@ export const useConsolidatedData = () => {
                 const val = parseFloat(text.split(',')[0]);
                 if (!isNaN(val) && val > 0) {
                     setConversionRate(val);
+                    try {
+                        localStorage.setItem('eur_to_inr_rate', val.toString());
+                    } catch {}
                 }
             } catch (e) {
                 console.error("Failed to fetch EUR rate", e);
@@ -216,11 +224,90 @@ export const useConsolidatedData = () => {
         const allocCash = netCash;
 
 
+        // --- CONSOLIDATED XIRR ---
+        let xirr = 0;
+        try {
+            const flows: { amount: number; date: Date }[] = [];
+            
+            // 1. Indian Equity Trades
+            indianTrades.forEach(t => {
+                flows.push({ amount: t.netAmount, date: new Date(t.date) });
+            });
+            
+            // 2. International Equity Trades (converted to INR)
+            intlTrades.forEach(t => {
+                flows.push({ amount: t.netAmount * conversionRate, date: new Date(t.date) });
+            });
+            
+            // Helper to determine purchase date for Mutual Funds and Gold ETFs
+            const getSafeDate = (dateStr: string | null | undefined): Date => {
+                if (dateStr) {
+                    const d = new Date(dateStr);
+                    if (!isNaN(d.getTime())) return d;
+                }
+                
+                // Fallback: try to find the earliest trade date from Indian/Intl trades
+                let earliest = new Date();
+                let foundTrade = false;
+                indianTrades.forEach(t => {
+                    const d = new Date(t.date);
+                    if (!isNaN(d.getTime()) && d < earliest) {
+                        earliest = d;
+                        foundTrade = true;
+                    }
+                });
+                intlTrades.forEach(t => {
+                    const d = new Date(t.date);
+                    if (!isNaN(d.getTime()) && d < earliest) {
+                        earliest = d;
+                        foundTrade = true;
+                    }
+                });
+                
+                if (foundTrade) {
+                    return earliest;
+                }
+                
+                // Absolute fallback: 180 days ago
+                const fallback = new Date();
+                fallback.setDate(fallback.getDate() - 180);
+                return fallback;
+            };
+
+            // 3. Mutual Funds Outflows
+            mfHoldings.forEach(h => {
+                if (h.invested > 0) {
+                    flows.push({ amount: -h.invested, date: getSafeDate(h.latestBuyDate) });
+                }
+            });
+
+            // 4. Gold ETF Outflows
+            goldHoldings.forEach(h => {
+                if (h.invested > 0) {
+                    flows.push({ amount: -h.invested, date: getSafeDate(h.latestBuyDate) });
+                }
+            });
+            
+            // Terminal value = value of all invested assets (excluding cash, exactly like individual equity views)
+            const terminalValue = indCurrentVal + indGoldEtfVal + intlCurrentValINR + mfCurrentVal + goldCurrentVal;
+            
+            if (flows.length > 0 && terminalValue > 0) {
+                const val = calculateXIRR(flows, terminalValue);
+                if (!isNaN(val) && isFinite(val)) {
+                    xirr = val * 100;
+                }
+            }
+        } catch (e) {
+            console.error("Consolidated XIRR calculation failed", e);
+        }
+
         return {
             netAssetValue,
             netCash,
             netReturnAbs,
             netReturnPct,
+            totalCapitalBase,
+            xirr,
             allocations: [
                 { name: 'Indian Equity & MF', value: allocIndianEquity, color: '#7042f8' }, 
                 { name: 'International Equity', value: allocIntlEquity, color: '#00e5ff' }, 
@@ -232,5 +319,8 @@ export const useConsolidatedData = () => {
 
     }, [indianTrades, indianPrices, indianSummary, indianLedger, indianDividends, intlTrades, intlPrices, intlSummary, intlDividends, mfHoldings, goldHoldings, cashHoldings, conversionRate]);
 
-    return { ...metrics, isLoading };
+    return { 
+        ...metrics, 
+        isLoading
+    };
 };

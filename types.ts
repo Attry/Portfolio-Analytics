@@ -91,3 +91,12 @@ export enum ViewState {
 }
 
 export type AssetContext = 'INDIAN_EQUITY' | 'INTERNATIONAL_EQUITY' | 'GOLD_ETF' | 'CASH_EQUIVALENTS' | 'MUTUAL_FUNDS';
+
+export interface PortfolioSnapshot {
+  date: string; // YYYY-MM-DD
+  totalInvested: number;
+  currentValue: number;
+  xirr: number;
+  twr: number; // Time-Weighted Return, tracking a base NAV of 100
+}
+

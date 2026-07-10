@@ -43,7 +43,7 @@ export const UploadView: React.FC<UploadViewProps> = ({
         const appData: Record<string, any> = {};
         // Keys prefixes used by the app
         const keysToBackup = [
-            'dhan_', 'intl_', 'gold_', 'cash_', 'mf_', 'GLOBAL_MARKET_DATE'
+            'dhan_', 'intl_', 'gold_', 'cash_', 'mf_', 'GLOBAL_MARKET_DATE', 'portfolio_snapshots'
         ];
         
         let count = 0;

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Crosshair, Plus, X, ExternalLink, Save, Target, AlertCircle, TrendingUp, AlertTriangle, Lock, Swords } from 'lucide-react';
 import { WatchlistItem, AssetContext } from '../../types';
 import { CartoonBackground } from '../CartoonBackground';
+import { calculateNetAssetValue } from '../../utils/financials';
 
 interface DecisionArenaViewProps {
   metrics: any;
@@ -132,9 +133,22 @@ export const DecisionArenaView: React.FC<DecisionArenaViewProps> = ({
         // 2. Call Ratio = Target / Price
         const callRatio = (desiredEntry > 0 && price > 0) ? desiredEntry / price : 0;
 
-        // 3. Weight = Current Value / Total Capital (Equity + Deployable Cash)
+        // 3. Weight = Current Value / Net Asset Value
         const marketValue = holding ? holding.marketValue : 0;
-        const weight = totalCapital > 0 ? (marketValue / totalCapital) * 100 : 0;
+        let weight = 0;
+        const netAssetValue = calculateNetAssetValue();
+        if (netAssetValue > 0) {
+            if (context === 'INTERNATIONAL_EQUITY') {
+                let conversionRate = 90;
+                try {
+                    const saved = localStorage.getItem('eur_to_inr_rate');
+                    if (saved) conversionRate = parseFloat(saved);
+                } catch {}
+                weight = ((marketValue * conversionRate) / netAssetValue) * 100;
+            } else {
+                weight = (marketValue / netAssetValue) * 100;
+            }
+        }
 
         // 4. Status Hierarchy
         let status = 'Hold';

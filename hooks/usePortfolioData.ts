@@ -1,7 +1,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { AssetContext, Trade, PnLRecord, LedgerRecord, DividendRecord, WatchlistItem, ViewState, CashHolding } from '../types';
-import { calculateFIFO, calculateXIRR, PerStockData } from '../utils/financials';
+import { calculateFIFO, calculateXIRR, PerStockData, calculateNetAssetValue } from '../utils/financials';
 import { parseMarketDataCSV, parseIndianEquity, parseInternationalEquity, parseMutualFundCSV, parseGoldETFCSV, ParseResult } from '../services/csvParsers';
 
 type UploadType = 'PNL' | 'LEDGER' | 'DIVIDEND' | 'TRADE_HISTORY' | 'MARKET_DATA' | 'PORTFOLIO_SNAPSHOT';
@@ -692,15 +692,39 @@ export const usePortfolioData = (context: AssetContext) => {
         const totalCapital = totalInvested + cashBalance;
         const netRealizedPnL = grossRealizedPnL - Math.abs(charges);
 
-        const finalHoldings = portfolioHoldings.map(h => ({
-            ...h, portfolioPct: currentValue > 0 ? (h.marketValue / currentValue) * 100 : 0
-        }));
+        let conversionRate = 90;
+        try {
+            const saved = localStorage.getItem('eur_to_inr_rate');
+            if (saved) conversionRate = parseFloat(saved);
+        } catch {}
+
+        const netAssetValue = calculateNetAssetValue();
+
+        const finalHoldings = portfolioHoldings.map(h => {
+            let pct = 0;
+            if (netAssetValue > 0) {
+                if (context === 'INTERNATIONAL_EQUITY') {
+                    pct = ((h.marketValue * conversionRate) / netAssetValue) * 100;
+                } else {
+                    pct = (h.marketValue / netAssetValue) * 100;
+                }
+            }
+            return { ...h, portfolioPct: pct };
+        });
         
         if (cashBalance > 0) {
+            let cashPct = 0;
+            if (netAssetValue > 0) {
+                if (context === 'INTERNATIONAL_EQUITY') {
+                    cashPct = ((cashBalance * conversionRate) / netAssetValue) * 100;
+                } else {
+                    cashPct = (cashBalance / netAssetValue) * 100;
+                }
+            }
             finalHoldings.push({
                 ticker: 'CASH BALANCE', qty: 1, invested: cashBalance, unrealized: 0, realized: 0,
                 netReturnPct: 0, marketValue: cashBalance, daysHeld: 0, isLive: true,
-                portfolioPct: currentValue > 0 ? (cashBalance / currentValue) * 100 : 0,
+                portfolioPct: cashPct,
                 latestBuyDate: null,
                 latestBuyPrice: 0
             });

@@ -144,3 +144,93 @@ export const calculateXIRR = (transactions: { amount: number; date: Date }[], te
   
   return rate; 
 };
+
+export const calculateNetAssetValue = (): number => {
+    const getLocal = (key: string) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : null;
+        } catch { return null; }
+    };
+
+    // 1. Indian Equity
+    const rawIndianTrades: any[] = [...(getLocal('dhan_base_trades') || []), ...(getLocal('dhan_trades') || [])];
+    const indianTrades = Array.from(new Map(rawIndianTrades.map(t => [t.id, t])).values());
+    const indianPrices: Record<string, number> = getLocal('dhan_prices') || {};
+    const indianSummaryObj = getLocal('dhan_summary') || {};
+    const indianBaseSummaryObj = getLocal('dhan_base_summary') || {};
+    const indianSummary = {
+        cash: indianSummaryObj.cash !== undefined ? indianSummaryObj.cash : 0,
+    };
+    const indianLedger: any[] = getLocal('dhan_ledger') || [];
+    
+    const indFifo = calculateFIFO(indianTrades);
+    let indCash = indianSummary.cash !== undefined ? indianSummary.cash : 0;
+    if (indianSummary.cash === undefined && indianLedger.length > 0) {
+        const sorted = [...indianLedger].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        indCash = sorted[0].balance;
+    }
+
+    let indCurrentVal = 0;
+    let indGoldEtfVal = 0;
+    Object.entries(indFifo.holdings).forEach(([ticker, data]) => {
+        if (data.qty > 0) {
+            const price = indianPrices[ticker.toUpperCase()] || (data.invested / data.qty);
+            const marketVal = data.qty * price;
+            if (ticker.toUpperCase() === 'NIPPON GOLD ETF (GOLDBEES)' || ticker.toUpperCase() === 'GOLDBEES' || ticker.toUpperCase().includes('GOLDBEES')) {
+                indGoldEtfVal += marketVal;
+            } else {
+                indCurrentVal += marketVal;
+            }
+        }
+    });
+
+    // 2. International Equity
+    const rawIntlTrades: any[] = [...(getLocal('intl_base_trades') || []), ...(getLocal('intl_trades') || [])];
+    const intlTrades = Array.from(new Map(rawIntlTrades.map(t => [t.id, t])).values());
+    const intlPrices: Record<string, number> = getLocal('intl_prices') || {};
+    const intlSummaryObj = getLocal('intl_summary') || {};
+    const intlSummary = {
+        cash: intlSummaryObj.cash !== undefined ? intlSummaryObj.cash : 0,
+    };
+    
+    const intlFifo = calculateFIFO(intlTrades);
+    let intlCashEUR = intlSummary.cash !== undefined ? intlSummary.cash : 0;
+    
+    let intlCurrentValEUR = 0;
+    Object.entries(intlFifo.holdings).forEach(([ticker, data]) => {
+        if (data.qty > 0) {
+            let price = intlPrices[ticker.toUpperCase()];
+            if (!price) {
+                 const key = Object.keys(intlPrices).find(k => k.startsWith(ticker.toUpperCase()) || ticker.toUpperCase().startsWith(k));
+                 if (key) price = intlPrices[key];
+            }
+            const finalPrice = price || (data.invested / data.qty);
+            intlCurrentValEUR += data.qty * finalPrice;
+        }
+    });
+
+    let conversionRate = 90;
+    try {
+        const saved = localStorage.getItem('eur_to_inr_rate');
+        if (saved) conversionRate = parseFloat(saved);
+    } catch {}
+
+    const intlCurrentValINR = intlCurrentValEUR * conversionRate;
+    const intlCashINR = intlCashEUR * conversionRate;
+
+    // 3. Mutual Funds
+    const mfHoldings: any[] = getLocal('mf_holdings') || [];
+    const mfCurrentVal = mfHoldings.reduce((acc, h) => acc + h.marketValue, 0);
+
+    // 4. Gold ETF
+    const goldHoldings: any[] = getLocal('gold_holdings') || [];
+    const goldCurrentVal = goldHoldings.reduce((acc, h) => acc + h.marketValue, 0);
+
+    // 5. Cash Equivalents
+    const cashHoldings: any[] = getLocal('cash_holdings') || [];
+    const cashEqVal = cashHoldings.reduce((acc, c) => acc + c.value, 0);
+
+    const netAssetValue = indCurrentVal + indGoldEtfVal + indCash + intlCurrentValINR + intlCashINR + mfCurrentVal + goldCurrentVal + cashEqVal;
+    return netAssetValue;
+};

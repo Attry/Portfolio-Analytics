@@ -5,6 +5,8 @@ import { StatsCard } from '../StatsCard';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { AssetContext } from '../../types';
 import { CartoonBackground } from '../CartoonBackground';
+import { useSnapshotData } from '../../hooks/useSnapshotData';
+import { PerformanceChart } from '../PerformanceChart';
 
 const COLORS = ['#7042f8', '#00e5ff', '#ff2975', '#00ffa3', '#facc15', '#fb923c', '#a855f7'];
 
@@ -20,6 +22,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
     const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
     const [salaryAccount, setSalaryAccount] = useState('');
     const [salaryAmount, setSalaryAmount] = useState('');
+
+    const snapshotVal = metrics.currentValue;
+    const snapshotInvested = (context === 'INDIAN_EQUITY' || context === 'INTERNATIONAL_EQUITY')
+        ? (metrics.totalInvested + metrics.cashBalance)
+        : metrics.totalInvested;
+    const snapshotXirr = metrics.xirr;
+
+    const {
+        snapshots,
+        takeSnapshotNow,
+        seedDemoSnapshots,
+        clearSnapshots
+    } = useSnapshotData(context, snapshotVal, snapshotInvested, snapshotXirr);
+
+    const contextName = useMemo(() => {
+        switch (context) {
+            case 'INDIAN_EQUITY': return 'Indian Equity';
+            case 'INTERNATIONAL_EQUITY': return 'International Equity';
+            case 'MUTUAL_FUNDS': return 'Mutual Funds';
+            case 'GOLD_ETF': return 'Gold ETF';
+            case 'CASH_EQUIVALENTS': return 'Cash Equivalents';
+            default: return 'Asset Class';
+        }
+    }, [context]);
 
     const handleAddSalary = () => {
         if (!salaryAccount || !salaryAmount || !onAddSalary) return;
@@ -84,6 +110,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                         value={`${metrics.xirr.toFixed(2)}%`} 
                         icon={<Activity />} 
                         isPositive={metrics.xirr >= 0}
+                    />
+                </div>
+                <div className="mt-6">
+                    <PerformanceChart
+                        snapshots={snapshots}
+                        onTakeSnapshot={takeSnapshotNow}
+                        onSeedDemo={seedDemoSnapshots}
+                        onClearSnapshots={clearSnapshots}
+                        netAssetValue={metrics.currentValue}
+                        currencySymbol={currencySymbol}
+                        contextName={contextName}
                     />
                 </div>
             </div>
@@ -170,6 +207,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                         </div>
                     </div>
                 )}
+                <div className="mt-6">
+                    <PerformanceChart
+                        snapshots={snapshots}
+                        onTakeSnapshot={takeSnapshotNow}
+                        onSeedDemo={seedDemoSnapshots}
+                        onClearSnapshots={clearSnapshots}
+                        netAssetValue={metrics.currentValue}
+                        currencySymbol={currencySymbol}
+                        contextName={contextName}
+                    />
+                </div>
             </div>
         );
     }
@@ -225,6 +273,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ metrics, currencyS
                     changeLabel={context === 'MUTUAL_FUNDS' ? "Funds" : "Stocks"}
                 />
             </div>
+
+            <PerformanceChart
+                snapshots={snapshots}
+                onTakeSnapshot={takeSnapshotNow}
+                onSeedDemo={seedDemoSnapshots}
+                onClearSnapshots={clearSnapshots}
+                netAssetValue={metrics.currentValue}
+                currencySymbol={currencySymbol}
+                contextName={contextName}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Allocation Chart */}
